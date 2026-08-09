@@ -1,0 +1,52 @@
+<div class="ftags-manager">
+  <p class="hint">{{localize "FTAGS.Manager.Intro"}}</p>
+
+  <div class="ftags-manager__create">
+    <label>
+      <span>{{localize "FTAGS.Manager.NewName"}}</span>
+      <input type="text" name="newName" maxlength="48" placeholder="{{localize 'FTAGS.Manager.NamePlaceholder'}}">
+    </label>
+    <label class="ftags-manager__color">
+      <span>{{localize "FTAGS.Manager.Color"}}</span>
+      <input type="color" name="newColor" value="#6F8FAF">
+    </label>
+    <button type="button" class="bright" data-action="create">
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
+      {{localize "FTAGS.Manager.Create"}}
+    </button>
+  </div>
+
+  {{#if hasTags}}
+    <div class="ftags-manager__list">
+      {{#each tags}}
+        <div class="ftags-manager__row" data-tag-id="{{id}}">
+          <span class="ftags-color-swatch" style="--ftags-tag-color: {{color}};"></span>
+          <span class="ftags-manager__name" title="{{name}}">{{name}}</span>
+          <code>{{color}}</code>
+          <div class="ftags-manager__row-actions">
+            <button type="button" class="icon" data-action="edit" data-tag-id="{{id}}" aria-label="{{localize 'FTAGS.Manager.Edit' name=name}}" data-tooltip="{{localize 'FTAGS.Common.Edit'}}">
+              <i class="fa-solid fa-pen" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="icon" data-action="delete" data-tag-id="{{id}}" aria-label="{{localize 'FTAGS.Manager.Delete' name=name}}" data-tooltip="{{localize 'FTAGS.Common.Delete'}}">
+              <i class="fa-solid fa-trash" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <p class="ftags-empty">{{localize "FTAGS.Manager.Empty"}}</p>
+  {{/if}}
+
+  <div class="ftags-manager__portability">
+    <input type="file" accept="application/json,.json" data-ftags-import-input hidden>
+    <button type="button" data-action="import">
+      <i class="fa-solid fa-file-import" aria-hidden="true"></i>
+      {{localize "FTAGS.Manager.Import"}}
+    </button>
+    <button type="button" data-action="export" {{disabled hasNoTags}}>
+      <i class="fa-solid fa-file-export" aria-hidden="true"></i>
+      {{localize "FTAGS.Manager.Export"}}
+    </button>
+  </div>
+</div>

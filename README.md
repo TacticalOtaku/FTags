@@ -1,0 +1,107 @@
+# FTags
+
+FTags is a system-independent Foundry VTT module that lets GMs attach colored text tags to world documents and folders. Tags are rendered next to entries in the standard sidebar directories, can be used as persistent per-GM OR filters, and power a keyboard-driven Spotlight search.
+
+Target: **Foundry VTT 14.363**. The manifest allows the full Version 14 generation and declares build 14.363 as verified.
+
+Author: **TacticalOtaku**.
+
+## Features
+
+- Actor, Item, Scene, JournalEntry, RollTable, Cards, Playlist, Macro, and their world folders.
+- Shared world tag dictionary for all GMs; no FTags UI is rendered for players.
+- Assignment from the right-click context menu.
+- Up to three colored text chips per row, followed by `+N` with a full tooltip.
+- Clickable OR filters saved per GM and per directory.
+- GM-only Spotlight search across tagged objects by object name or tag name.
+- `#term` Spotlight tokens search tag names only; arrow keys, Enter, and Escape provide full keyboard navigation.
+- Editable Foundry keybinding with no forced default, plus a magnifying-glass shortcut in supported directory toolbars.
+- Folder tags do not inherit automatically; a GM can explicitly add the selected tags to all current documents in that folder and its subfolders.
+- Tag manager with create, edit, color, delete, import, and export actions.
+- Versioned JSON dictionary import/export. Assignments are intentionally not exported.
+- English and Russian localization.
+- No runtime dependencies, external services, sockets, or secrets.
+
+## Installation
+
+1. Copy the module directory to `{Foundry user data}/Data/modules/ftags`.
+2. Make sure `module.json` is directly inside that `ftags` directory.
+3. Restart Foundry VTT and enable **FTags** in the world module manager.
+
+For a packaged release, extract `ftags-1.1.0.zip` into `Data/modules`; the archive already contains the top-level `ftags` directory.
+
+## Usage
+
+1. Open **Game Settings → Configure Settings → Module Settings → FTags → Manage tags**.
+2. Create tags and choose their colors.
+3. Right-click a supported document or folder and choose **Manage tags**.
+4. Click a rendered tag chip to add or remove it from the active OR filter. Use the clear-filter button to show every entry again.
+5. When assigning tags to a folder, optionally enable the one-time action that adds the selected tags to existing documents in the folder tree.
+6. Open **Game Settings → Configure Controls → FTags**, assign a key to **Open FTags Spotlight**, then use it anywhere in the world. The magnifying-glass button in a supported directory opens the same search.
+
+Spotlight lists only supported world objects and folders that currently have at least one valid tag. Normal words may match either the object name or a tag name. Prefix a word with `#` to require a tag-name match, for example `wolf #prepared`. Multiple words use AND semantics. At most 100 matches are shown at once.
+
+Deleting a tag requires confirmation and removes that tag id from all supported world documents and folders. If any object cannot be updated, dictionary deletion is aborted and the tag stays available for a safe retry.
+
+## Import and export
+
+The manager exports a JSON document containing:
+
+- `schemaVersion`
+- export metadata
+- tag ids, names, and colors
+
+Assignments are not included. Import merges by stable tag id, updates matching ids, creates new ids, and rejects conflicting duplicate names or malformed data before changing the world dictionary.
+
+## Data and privacy
+
+- Tag definitions are stored in a hidden world setting.
+- Assignments are stored in `flags.ftags.tagIds` on world documents and Folder documents.
+- Active filters use a Version 14 user-scoped setting, separately for each GM.
+- The UI and all write callbacks require `game.user.isGM`.
+- Foundry world data is not a secrets vault. Do not use tag names for information that must be cryptographically hidden from player clients or browser debugging.
+
+## Deliberate limits
+
+- No player UI.
+- No Compendium or JournalEntryPage support.
+- No full-text search inside document content; Spotlight searches object and tag names only.
+- No automatic folder inheritance for future documents.
+- No export of assignments, arbitrary bulk editor, external database, or cloud sync.
+
+## Development and verification
+
+Use Node.js 20 or newer:
+
+```text
+npm test
+npm run validate
+npm run validate:foundry -- "PATH/TO/Foundry Virtual Tabletop/resources/app"
+```
+
+The automated suite covers tag normalization, duplicate protection, OR matching, `3 + N`, contrast selection, recursive folder traversal, Spotlight tokenization and ranking, import/export merge behavior, saved-filter cleanup, manifest compatibility, and localization parity. The optional Foundry check verifies the directory, ApplicationV2, settings, and editable GM keybinding integration surfaces against an exact local 14.363.0 installation.
+
+### Manual Foundry 14.363 matrix
+
+Repeat the core flow for Actor, Item, Scene, JournalEntry, RollTable, Cards, Playlist, and Macro directories:
+
+1. Create four tags as a GM.
+2. Assign all four to a document; verify three chips and `+1` tooltip.
+3. Reload the client; verify assignments and active filters persist.
+4. Select two tag filters; verify OR behavior and visible ancestor folders.
+5. Test the same directory in the attached sidebar and a detached popout.
+6. Assign a folder tag without propagation; verify children remain unchanged.
+7. Repeat with propagation enabled; verify current recursive documents receive it and newly created documents do not.
+8. Log in as a player; verify no FTags toolbar, chips, manager, or context actions are visible.
+9. Export and re-import the dictionary; verify preview counts and unchanged assignments.
+10. Delete a tag; verify confirmation, global cleanup, and stale saved-filter removal.
+11. Assign a Spotlight key, search by object name, tag name, and `#tag`, then open results with mouse and keyboard.
+12. Verify Spotlight only contains tagged world objects, respects nested folder paths, and remains unavailable to a player.
+
+## Русское описание
+
+FTags добавляет GM-метки к стандартным спискам Foundry VTT. Метки общие для всех GM мира, игрокам интерфейс модуля не показывается. Поддерживаются актёры, предметы, сцены, журналы, таблицы, карточные колоды, плейлисты, макросы и папки. Фильтры работают по логике «ИЛИ» и сохраняются отдельно для каждого GM.
+
+Установка: распакуйте папку `ftags` в `Data/modules`, перезапустите Foundry и включите модуль в нужном мире. Управление словарём находится в настройках модулей, а назначение — в контекстном меню сущности или папки.
+
+Spotlight вызывается назначаемой клавишей в **Настройках управления → FTags** или кнопкой-лупой в каталоге. Он показывает только объекты мира с метками, ищет по названиям объектов и меток, а префикс `#` ограничивает слово названиями меток.
