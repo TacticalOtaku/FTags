@@ -1,0 +1,228 @@
+import {
+  MAX_TAG_NAME_LENGTH,
+  MAX_VISIBLE_TAGS,
+  SCHEMA_VERSION
+} from "../constants.js";
+
+const TAG_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
+
+export class TagValidationError extends Error {
+  constructor(code, details = {}) {
+    super(code);
+    this.name = "TagValidationError";
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export function normalizeTagName(value) {
+  const name = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!name) throw new TagValidationError("name-required");
+  if (name.length > MAX_TAG_NAME_LENGTH) {
+    throw new TagValidationError("name-too-long", {max: MAX_TAG_NAME_LENGTH});
+  }
+  return name;
+}
+
+export function normalizeTagColor(value) {
+  const color = String(value ?? "").trim();
+  if (!COLOR_PATTERN.test(color)) throw new TagValidationError("invalid-color");
+  return color.toUpperCase();
+}
+
+export function normalizeTagId(value) {
+  const id = String(value ?? "").trim();
+  if (!TAG_ID_PATTERN.test(id)) throw new TagValidationError("invalid-id");
+  return id;
+}
+
+export function createTagId() {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  if (uuid) return uuid;
+  return `tag-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function normalizeTag(raw, {requireId = true} = {}) {
+  return {
+    id: requireId ? normalizeTagId(raw?.id) : normalizeTagId(raw?.id || createTagId()),
+    name: normalizeTagName(raw?.name),
+    color: normalizeTagColor(raw?.color)
+  };
+}
+
+export function emptyDictionary() {
+  return {schemaVersion: SCHEMA_VERSION, tags: []};
+}
+
+export function coerceDictionary(raw) {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.tags)) return emptyDictionary();
+
+  const seenIds = new Set();
+  const seenNames = new Set();
+  const tags = [];
+  for (const candidate of raw.tags) {
+    try {
+      const tag = normalizeTag(candidate);
+      const nameKey = tag.name.toLocaleLowerCase();
+      if (seenIds.has(tag.id) || seenNames.has(nameKey)) continue;
+      seenIds.add(tag.id);
+      seenNames.add(nameKey);
+      tags.push(tag);
+    } catch {
+      // Ignore malformed persisted entries so one bad value cannot break the module UI.
+    }
+  }
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    tags: sortTags(tags)
+  };
+}
+
+export function validateDictionaryPayload(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new TagValidationError("invalid-payload");
+  }
+  if (raw.schemaVersion !== SCHEMA_VERSION) {
+    throw new TagValidationError("unsupported-schema", {
+      expected: SCHEMA_VERSION,
+      actual: raw.schemaVersion
+    });
+  }
+  if (!Array.isArray(raw.tags)) throw new TagValidationError("tags-required");
+  if (raw.tags.length > 500) throw new TagValidationError("too-many-tags", {max: 500});
+
+  const tags = raw.tags.map((tag) => normalizeTag(tag));
+  assertUniqueTags(tags);
+  return {schemaVersion: SCHEMA_VERSION, tags: sortTags(tags)};
+}
+
+export function validateTagDraft(raw, existingTags = [], editingId = null) {
+  const tag = normalizeTag(raw, {requireId: Boolean(raw?.id)});
+  const duplicate = existingTags.find((item) => (
+    item.id !== editingId
+    && item.name.localeCompare(tag.name, undefined, {sensitivity: "base"}) === 0
+  ));
+  if (duplicate) throw new TagValidationError("duplicate-name", {name: tag.name});
+  return tag;
+}
+
+export function mergeDictionaries(currentRaw, importedRaw) {
+  const current = coerceDictionary(currentRaw);
+  const imported = validateDictionaryPayload(importedRaw);
+  const byId = new Map(current.tags.map((tag) => [tag.id, tag]));
+  const currentNameOwners = new Map(
+    current.tags.map((tag) => [tag.name.toLocaleLowerCase(), tag.id])
+  );
+
+  const summary = {created: 0, updated: 0, unchanged: 0};
+  for (const tag of imported.tags) {
+    const nameKey = tag.name.toLocaleLowerCase();
+    const nameOwner = currentNameOwners.get(nameKey);
+    if (nameOwner && nameOwner !== tag.id) {
+      throw new TagValidationError("import-name-conflict", {name: tag.name});
+    }
+
+    const previous = byId.get(tag.id);
+    if (!previous) summary.created += 1;
+    else if (previous.name === tag.name && previous.color === tag.color) summary.unchanged += 1;
+    else summary.updated += 1;
+
+    if (previous) currentNameOwners.delete(previous.name.toLocaleLowerCase());
+    currentNameOwners.set(nameKey, tag.id);
+    byId.set(tag.id, tag);
+  }
+
+  return {
+    dictionary: {schemaVersion: SCHEMA_VERSION, tags: sortTags([...byId.values()])},
+    summary
+  };
+}
+
+export function sanitizeTagIds(values, validIds = null) {
+  const ids = [];
+  const seen = new Set();
+  for (const value of Array.isArray(values) ? values : []) {
+    const id = String(value ?? "").trim();
+    if (!TAG_ID_PATTERN.test(id) || seen.has(id) || (validIds && !validIds.has(id))) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
+export function matchesAnyTag(assignedIds, activeIds) {
+  const active = activeIds instanceof Set ? activeIds : new Set(activeIds ?? []);
+  if (!active.size) return true;
+  return sanitizeTagIds(assignedIds).some((id) => active.has(id));
+}
+
+export function partitionVisibleTags(assignedIds, dictionaryRaw, limit = MAX_VISIBLE_TAGS) {
+  const dictionary = coerceDictionary(dictionaryRaw);
+  const byId = new Map(dictionary.tags.map((tag) => [tag.id, tag]));
+  const resolved = sanitizeTagIds(assignedIds, new Set(byId.keys()))
+    .map((id) => byId.get(id));
+  return {
+    visible: resolved.slice(0, limit),
+    hidden: resolved.slice(limit),
+    total: resolved.length
+  };
+}
+
+export function contrastTextColor(hex) {
+  const color = normalizeTagColor(hex).slice(1);
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16) / 255);
+  const linear = channels.map((channel) => (
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  ));
+  const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  return luminance > 0.42 ? "#111111" : "#FFFFFF";
+}
+
+export function collectFolderDocuments(folder) {
+  const documents = [];
+  const visitedFolders = new Set();
+  const visitedDocuments = new Set();
+
+  const visit = (current) => {
+    if (!current || visitedFolders.has(current.id)) return;
+    visitedFolders.add(current.id);
+    for (const document of current.contents ?? []) {
+      if (!document?.id || visitedDocuments.has(document.uuid ?? document.id)) continue;
+      visitedDocuments.add(document.uuid ?? document.id);
+      documents.push(document);
+    }
+    for (const child of current.getSubfolders?.(false) ?? []) visit(child);
+  };
+
+  visit(folder);
+  return documents;
+}
+
+export function cleanFilterState(raw, validTagIds) {
+  const valid = validTagIds instanceof Set ? validTagIds : new Set(validTagIds ?? []);
+  const result = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return result;
+  for (const [documentName, tagIds] of Object.entries(raw)) {
+    const cleaned = sanitizeTagIds(tagIds, valid);
+    if (cleaned.length) result[documentName] = cleaned;
+  }
+  return result;
+}
+
+export function sortTags(tags) {
+  return [...tags].sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: "base"}));
+}
+
+function assertUniqueTags(tags) {
+  const ids = new Set();
+  const names = new Set();
+  for (const tag of tags) {
+    const nameKey = tag.name.toLocaleLowerCase();
+    if (ids.has(tag.id)) throw new TagValidationError("duplicate-id", {id: tag.id});
+    if (names.has(nameKey)) throw new TagValidationError("duplicate-name", {name: tag.name});
+    ids.add(tag.id);
+    names.add(nameKey);
+  }
+}

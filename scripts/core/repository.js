@@ -1,0 +1,155 @@
+import {
+  COLLECTION_PROPERTY_BY_DOCUMENT,
+  FLAGS,
+  MODULE_ID,
+  SETTINGS,
+  SUPPORTED_DOCUMENT_TYPES
+} from "../constants.js";
+import {
+  cleanFilterState,
+  coerceDictionary,
+  collectFolderDocuments,
+  emptyDictionary,
+  sanitizeTagIds
+} from "./model.js";
+
+export class TagRepository {
+  registerSettings({managerType, onDataChange} = {}) {
+    game.settings.register(MODULE_ID, SETTINGS.DICTIONARY, {
+      name: "FTAGS.Settings.DictionaryName",
+      hint: "FTAGS.Settings.DictionaryHint",
+      scope: "world",
+      config: false,
+      type: Object,
+      default: emptyDictionary(),
+      onChange: () => onDataChange?.("dictionary")
+    });
+
+    game.settings.register(MODULE_ID, SETTINGS.FILTERS, {
+      name: "FTAGS.Settings.FiltersName",
+      hint: "FTAGS.Settings.FiltersHint",
+      scope: "user",
+      config: false,
+      type: Object,
+      default: {},
+      onChange: () => onDataChange?.("filters")
+    });
+
+    if (managerType) {
+      game.settings.registerMenu(MODULE_ID, SETTINGS.MANAGER, {
+        name: "FTAGS.Settings.ManagerName",
+        label: "FTAGS.Settings.ManagerLabel",
+        hint: "FTAGS.Settings.ManagerHint",
+        icon: "fa-solid fa-tags",
+        type: managerType,
+        restricted: true
+      });
+    }
+  }
+
+  getDictionary() {
+    return coerceDictionary(game.settings.get(MODULE_ID, SETTINGS.DICTIONARY));
+  }
+
+  async setDictionary(dictionary) {
+    this.assertGM();
+    return game.settings.set(MODULE_ID, SETTINGS.DICTIONARY, coerceDictionary(dictionary));
+  }
+
+  getTagIds(document) {
+    return sanitizeTagIds(document?.getFlag?.(MODULE_ID, FLAGS.TAG_IDS));
+  }
+
+  async setTagIds(document, tagIds) {
+    this.assertGM();
+    if (!document || document.pack || !this.isTaggable(document)) {
+      throw new Error("Unsupported FTags document");
+    }
+
+    const clean = sanitizeTagIds(tagIds);
+    const current = this.getTagIds(document);
+    if (arraysEqual(current, clean)) return document;
+    if (!clean.length) return document.unsetFlag(MODULE_ID, FLAGS.TAG_IDS);
+    return document.setFlag(MODULE_ID, FLAGS.TAG_IDS, clean);
+  }
+
+  getSavedFilterState() {
+    const raw = game.settings.get(MODULE_ID, SETTINGS.FILTERS);
+    return raw && typeof raw === "object" && !Array.isArray(raw) ? structuredClone(raw) : {};
+  }
+
+  async setSavedFilterState(state) {
+    this.assertGM();
+    return game.settings.set(MODULE_ID, SETTINGS.FILTERS, state);
+  }
+
+  getSavedFilter(documentName) {
+    return sanitizeTagIds(this.getSavedFilterState()[documentName]);
+  }
+
+  async setSavedFilter(documentName, tagIds) {
+    this.assertGM();
+    const state = this.getSavedFilterState();
+    const clean = sanitizeTagIds(tagIds);
+    if (clean.length) state[documentName] = clean;
+    else delete state[documentName];
+    return this.setSavedFilterState(state);
+  }
+
+  async cleanSavedFilters(validTagIds) {
+    this.assertGM();
+    const current = this.getSavedFilterState();
+    const cleaned = cleanFilterState(current, validTagIds);
+    if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
+      await this.setSavedFilterState(cleaned);
+    }
+    return cleaned;
+  }
+
+  getWorldCollection(documentName) {
+    const property = COLLECTION_PROPERTY_BY_DOCUMENT[documentName];
+    return (property ? game[property] : null) ?? game.collections?.get?.(documentName) ?? null;
+  }
+
+  getDocuments(documentName) {
+    const collection = this.getWorldCollection(documentName);
+    return [...(collection?.contents ?? collection ?? [])].filter((document) => !document.pack);
+  }
+
+  getFolders(documentName = null) {
+    return [...(game.folders?.contents ?? game.folders ?? [])].filter((folder) => (
+      !folder.pack
+      && SUPPORTED_DOCUMENT_TYPES.includes(folder.type)
+      && (!documentName || folder.type === documentName)
+    ));
+  }
+
+  getAllTaggableObjects() {
+    return [
+      ...SUPPORTED_DOCUMENT_TYPES.flatMap((documentName) => this.getDocuments(documentName)),
+      ...this.getFolders()
+    ];
+  }
+
+  getFolderDocuments(folder) {
+    if (!folder || folder.documentName !== "Folder" || !SUPPORTED_DOCUMENT_TYPES.includes(folder.type)) return [];
+    return collectFolderDocuments(folder).filter((document) => this.isTaggable(document) && !document.pack);
+  }
+
+  isTaggable(document) {
+    if (document?.documentName === "Folder") return SUPPORTED_DOCUMENT_TYPES.includes(document.type);
+    return SUPPORTED_DOCUMENT_TYPES.includes(document?.documentName);
+  }
+
+  assertGM() {
+    if (!game.user?.isGM) {
+      const error = new Error("gm-only");
+      error.code = "gm-only";
+      throw error;
+    }
+  }
+}
+
+function arraysEqual(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}

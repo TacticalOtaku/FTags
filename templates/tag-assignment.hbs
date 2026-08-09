@@ -1,0 +1,38 @@
+<div class="ftags-assignment">
+  <p class="hint">{{localize "FTAGS.Assignment.Intro" name=targetName}}</p>
+
+  {{#if hasTags}}
+    <div class="ftags-assignment__list" role="group" aria-label="{{localize 'FTAGS.Assignment.Title'}}">
+      {{#each tags}}
+        <label class="ftags-assignment__option">
+          <input type="checkbox" name="tagIds" value="{{id}}" {{checked assigned}}>
+          <span class="ftags-color-swatch" style="--ftags-tag-color: {{color}};"></span>
+          <span class="ftags-assignment__name">{{name}}</span>
+        </label>
+      {{/each}}
+    </div>
+  {{else}}
+    <p class="ftags-empty">{{localize "FTAGS.Assignment.NoTags"}}</p>
+  {{/if}}
+
+  {{#if isFolder}}
+    <label class="ftags-folder-propagation">
+      <input type="checkbox" name="applyToContents" {{disabled hasNoFolderContents}}>
+      <span>
+        <strong>{{localize "FTAGS.Assignment.ApplyFolder"}}</strong>
+        <small>{{localize "FTAGS.Assignment.ApplyFolderHint" count=folderContentCount}}</small>
+      </span>
+    </label>
+  {{/if}}
+
+  <div class="ftags-dialog-actions">
+    <button type="button" data-action="manage">
+      <i class="fa-solid fa-tags" aria-hidden="true"></i>
+      {{localize "FTAGS.Assignment.Manage"}}
+    </button>
+    <button type="submit" class="bright" {{disabled hasNoTags}}>
+      <i class="fa-solid fa-check" aria-hidden="true"></i>
+      {{localize "FTAGS.Assignment.Save"}}
+    </button>
+  </div>
+</div>
