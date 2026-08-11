@@ -6,13 +6,11 @@ import {
   MAX_VISIBLE_TAGS,
   SUPPORTED_DOCUMENT_TYPES
 } from "../constants.js";
-import {contrastTextColor, matchesAnyTag, partitionVisibleTags} from "../core/model.js";
-import {tagRepository, tagService} from "../runtime.js";
+import {partitionVisibleTags} from "../core/model.js";
+import {tagRepository} from "../runtime.js";
 import {notifyError} from "./notifications.js";
 import {openTagManager} from "./tag-manager.js";
 import {openSpotlight} from "./spotlight.js";
-
-const renderVersions = new WeakMap();
 
 export function registerDirectoryHooks() {
   Hooks.on("renderDocumentDirectory", (application, element) => {
@@ -25,17 +23,13 @@ export async function enhanceDirectory(application, element) {
   const documentName = application?.documentName ?? application?.collection?.documentName;
   if (!SUPPORTED_DOCUMENT_TYPES.includes(documentName)) return;
 
-  const version = (renderVersions.get(application) ?? 0) + 1;
-  renderVersions.set(application, version);
   const dictionary = tagRepository.getDictionary();
-  const activeFilters = await tagService.getActiveFilters(documentName);
-  if (renderVersions.get(application) !== version) return;
 
   element.querySelectorAll(".ftags-row-tags, .ftags-directory-toolbar").forEach((node) => node.remove());
+  element.querySelectorAll(".ftags-filtered-out").forEach((node) => node.classList.remove("ftags-filtered-out"));
   const rows = collectRows(element, application, documentName);
-  for (const record of rows) injectRowTags(record, dictionary, activeFilters, application, documentName);
-  const matchedCount = applyFilters(rows, activeFilters);
-  injectToolbar(element, dictionary, activeFilters, application, documentName, matchedCount);
+  for (const record of rows) injectRowTags(record, dictionary, documentName);
+  injectToolbar(element, application);
 }
 
 export function renderSupportedDirectories() {
@@ -66,7 +60,7 @@ function collectRows(root, application, documentName) {
   return records;
 }
 
-function injectRowTags(record, dictionary, activeFilters, application, documentName) {
+function injectRowTags(record, dictionary, documentName) {
   if (record.isFolder && record.document.type !== documentName) return;
   const assignment = tagRepository.getTagIds(record.document);
   const {visible, hidden} = partitionVisibleTags(assignment, dictionary, MAX_VISIBLE_TAGS);
@@ -75,24 +69,21 @@ function injectRowTags(record, dictionary, activeFilters, application, documentN
   const container = document.createElement("span");
   container.className = "ftags-row-tags";
   container.dataset.ftagsFor = record.document.id;
+  const names = [...visible, ...hidden].map((tag) => tag.name).join(", ");
+  container.title = game.i18n.format("FTAGS.Filter.FullList", {names});
   for (const tag of visible) {
-    container.append(createInteractiveChip(tag, activeFilters.has(tag.id), async (event) => {
+    container.append(createInteractiveStrip(tag, (event) => {
       event.preventDefault();
       event.stopPropagation();
-      try {
-        await tagService.toggleFilter(documentName, tag.id);
-        await application.render({force: true});
-      } catch (error) {
-        notifyError(error);
-      }
+      openSpotlight({includeTagId: tag.id});
     }));
   }
   if (hidden.length) {
     const overflow = document.createElement("span");
-    overflow.className = "ftags-chip ftags-chip--overflow";
-    overflow.textContent = `+${hidden.length}`;
-    const names = [...visible, ...hidden].map((tag) => tag.name).join(", ");
+    overflow.className = "ftags-tag-strip ftags-tag-strip--overflow";
+    overflow.style.setProperty("--ftags-strip-background", buildColorSegments(hidden));
     overflow.title = game.i18n.format("FTAGS.Filter.FullList", {names});
+    overflow.setAttribute("role", "img");
     overflow.setAttribute("aria-label", overflow.title);
     container.append(overflow);
   }
@@ -102,7 +93,7 @@ function injectRowTags(record, dictionary, activeFilters, application, documentN
   else record.row.append(container);
 }
 
-function injectToolbar(root, dictionary, activeFilters, application, documentName, matchedCount) {
+function injectToolbar(root, application) {
   const toolbar = document.createElement("div");
   toolbar.className = "ftags-directory-toolbar";
 
@@ -132,98 +123,29 @@ function injectToolbar(root, dictionary, activeFilters, application, documentNam
   });
   toolbar.append(manageButton);
 
-  if (activeFilters.size) {
-    const label = document.createElement("span");
-    label.className = "ftags-directory-toolbar__label";
-    label.textContent = game.i18n.localize("FTAGS.Filter.Label");
-    toolbar.append(label);
-
-    const filters = document.createElement("span");
-    filters.className = "ftags-directory-toolbar__filters";
-    const byId = new Map(dictionary.tags.map((tag) => [tag.id, tag]));
-    const activeTags = [...activeFilters].map((id) => byId.get(id)).filter(Boolean);
-    activeTags.forEach((tag, index) => {
-      if (index) {
-        const operator = document.createElement("span");
-        operator.className = "ftags-directory-toolbar__operator";
-        operator.textContent = game.i18n.localize("FTAGS.Filter.Or");
-        filters.append(operator);
-      }
-      filters.append(createInteractiveChip(tag, true, async () => {
-        try {
-          await tagService.toggleFilter(documentName, tag.id);
-          await application.render({force: true});
-        } catch (error) {
-          notifyError(error);
-        }
-      }));
-    });
-    toolbar.append(filters);
-
-    const clearButton = document.createElement("button");
-    clearButton.type = "button";
-    clearButton.className = "icon";
-    clearButton.setAttribute("aria-label", game.i18n.localize("FTAGS.Filter.Clear"));
-    clearButton.dataset.tooltip = game.i18n.localize("FTAGS.Filter.Clear");
-    clearButton.innerHTML = '<i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i>';
-    clearButton.addEventListener("click", async () => {
-      try {
-        await tagService.clearFilters(documentName);
-        await application.render({force: true});
-      } catch (error) {
-        notifyError(error);
-      }
-    });
-    toolbar.append(clearButton);
-
-    if (!matchedCount) {
-      const noMatches = document.createElement("p");
-      noMatches.className = "ftags-no-matches";
-      noMatches.textContent = game.i18n.localize("FTAGS.Filter.NoMatches");
-      toolbar.append(noMatches);
-    }
-  }
-
   const list = root.querySelector(DIRECTORY_LIST_SELECTOR);
   if (list?.parentElement) list.parentElement.insertBefore(toolbar, list);
   else root.prepend(toolbar);
 }
 
-function applyFilters(records, activeFilters) {
-  records.forEach(({row}) => row.classList.remove("ftags-filtered-out"));
-  if (!activeFilters.size) return records.length;
-
-  let matched = 0;
-  const matchingRows = [];
-  for (const record of records) {
-    const matches = matchesAnyTag(tagRepository.getTagIds(record.document), activeFilters);
-    record.row.classList.toggle("ftags-filtered-out", !matches);
-    if (matches) {
-      matched += 1;
-      matchingRows.push(record.row);
-    }
-  }
-
-  for (const row of matchingRows) {
-    let ancestor = row.parentElement?.closest?.(FOLDER_ROW_SELECTOR);
-    while (ancestor) {
-      ancestor.classList.remove("ftags-filtered-out");
-      ancestor = ancestor.parentElement?.closest?.(FOLDER_ROW_SELECTOR);
-    }
-  }
-  return matched;
-}
-
-function createInteractiveChip(tag, active, onClick) {
+function createInteractiveStrip(tag, onClick) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "ftags-chip";
-  button.textContent = tag.name;
+  button.className = "ftags-tag-strip";
   button.title = tag.name;
   button.dataset.tagId = tag.id;
-  button.setAttribute("aria-pressed", String(active));
-  button.style.setProperty("--ftags-tag-color", tag.color);
-  button.style.setProperty("--ftags-tag-foreground", contrastTextColor(tag.color));
+  button.setAttribute("aria-label", game.i18n.format("FTAGS.Filter.OpenTag", {name: tag.name}));
+  button.style.setProperty("--ftags-strip-background", tag.color);
   button.addEventListener("click", onClick);
   return button;
+}
+
+function buildColorSegments(tags) {
+  const segment = 100 / tags.length;
+  const stops = tags.flatMap((tag, index) => {
+    const start = (index * segment).toFixed(2);
+    const end = ((index + 1) * segment).toFixed(2);
+    return [`${tag.color} ${start}%`, `${tag.color} ${end}%`];
+  });
+  return `linear-gradient(to right, ${stops.join(", ")})`;
 }

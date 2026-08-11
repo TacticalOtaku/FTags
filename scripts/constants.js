@@ -8,6 +8,7 @@ export const BULK_CONCURRENCY = 5;
 export const SETTINGS = Object.freeze({
   DICTIONARY: "tagDictionary",
   FILTERS: "savedFilters",
+  SPOTLIGHT_FILTERS: "spotlightFilters",
   MANAGER: "tagManager"
 });
 
@@ -24,6 +25,11 @@ export const SUPPORTED_DOCUMENT_TYPES = Object.freeze([
   "Cards",
   "Playlist",
   "Macro"
+]);
+
+export const SPOTLIGHT_DOCUMENT_TYPES = Object.freeze([
+  ...SUPPORTED_DOCUMENT_TYPES,
+  "Folder"
 ]);
 
 export const COLLECTION_PROPERTY_BY_DOCUMENT = Object.freeze({

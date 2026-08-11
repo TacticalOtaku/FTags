@@ -9,7 +9,9 @@ import {
   cleanFilterState,
   coerceDictionary,
   collectFolderDocuments,
+  defaultSpotlightFilterState,
   emptyDictionary,
+  normalizeSpotlightFilterState,
   sanitizeTagIds
 } from "./model.js";
 
@@ -33,6 +35,16 @@ export class TagRepository {
       type: Object,
       default: {},
       onChange: () => onDataChange?.("filters")
+    });
+
+    game.settings.register(MODULE_ID, SETTINGS.SPOTLIGHT_FILTERS, {
+      name: "FTAGS.Settings.SpotlightFiltersName",
+      hint: "FTAGS.Settings.SpotlightFiltersHint",
+      scope: "user",
+      config: false,
+      type: Object,
+      default: defaultSpotlightFilterState(),
+      onChange: () => onDataChange?.("spotlight-filters")
     });
 
     if (managerType) {
@@ -102,6 +114,29 @@ export class TagRepository {
     const cleaned = cleanFilterState(current, validTagIds);
     if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
       await this.setSavedFilterState(cleaned);
+    }
+    return cleaned;
+  }
+
+  getSpotlightFilterState() {
+    return structuredClone(game.settings.get(MODULE_ID, SETTINGS.SPOTLIGHT_FILTERS));
+  }
+
+  async setSpotlightFilterState(state) {
+    this.assertGM();
+    return game.settings.set(
+      MODULE_ID,
+      SETTINGS.SPOTLIGHT_FILTERS,
+      normalizeSpotlightFilterState(state)
+    );
+  }
+
+  async cleanSpotlightFilters(validTagIds) {
+    this.assertGM();
+    const current = this.getSpotlightFilterState();
+    const cleaned = normalizeSpotlightFilterState(current, validTagIds);
+    if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
+      await this.setSpotlightFilterState(cleaned);
     }
     return cleaned;
   }

@@ -1,13 +1,87 @@
-<div class="ftags-spotlight__search">
-  <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-  <input
-    type="search"
-    value="{{query}}"
-    placeholder="{{localize 'FTAGS.Spotlight.Placeholder'}}"
-    aria-label="{{localize 'FTAGS.Spotlight.SearchLabel'}}"
-    aria-controls="ftags-spotlight-results"
-    autocomplete="off"
-    spellcheck="false"
-    data-ftags-spotlight-search
+<div class="ftags-spotlight__search-shell">
+  <div class="ftags-spotlight__search">
+    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+    <input
+      type="search"
+      value="{{query}}"
+      placeholder="{{localize 'FTAGS.Spotlight.Placeholder'}}"
+      aria-label="{{localize 'FTAGS.Spotlight.SearchLabel'}}"
+      aria-controls="ftags-spotlight-results"
+      autocomplete="off"
+      spellcheck="false"
+      data-ftags-spotlight-search
+    >
+    <button
+      type="button"
+      class="icon ftags-spotlight__filter-toggle"
+      aria-label="{{filtersButtonLabel}}"
+      aria-expanded="{{filtersOpen}}"
+      aria-controls="ftags-spotlight-filters"
+      data-action="toggleFilters"
+      data-ftags-filter-toggle
+    >
+      <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+      <span class="ftags-spotlight__filter-count" data-ftags-filter-count {{#unless hasActiveFilters}}hidden{{/unless}}>{{filterCount}}</span>
+    </button>
+  </div>
+
+  <section
+    id="ftags-spotlight-filters"
+    class="ftags-spotlight__filter-panel"
+    data-ftags-filter-panel
+    {{#unless filtersOpen}}hidden{{/unless}}
   >
+    <header class="ftags-spotlight__filter-header">
+      <div>
+        <strong>{{localize "FTAGS.Spotlight.Filters"}}</strong>
+        <small>{{localize "FTAGS.Spotlight.FiltersHint"}}</small>
+      </div>
+      <button type="button" data-action="resetFilters">{{localize "FTAGS.Spotlight.ResetFilters"}}</button>
+    </header>
+
+    <div class="ftags-spotlight__filter-section ftags-spotlight__filter-section--tags">
+      <label class="ftags-spotlight__filter-field">
+        <span>{{localize "FTAGS.Spotlight.IncludeMode"}}</span>
+        <select data-ftags-match-mode>
+          {{#each matchModes}}
+            <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        </select>
+      </label>
+      {{#if hasFilterTags}}
+        <div class="ftags-spotlight__tag-filters">
+          {{#each filterTags}}
+            <label class="ftags-spotlight__tag-filter">
+              <span class="ftags-color-swatch" style="--ftags-tag-color: {{color}};"></span>
+              <span class="ftags-spotlight__tag-filter-name" title="{{name}}">{{name}}</span>
+              <select data-ftags-tag-filter data-tag-id="{{id}}" aria-label="{{name}}">
+                <option value="ignore" {{#if ignored}}selected{{/if}}>{{localize "FTAGS.Spotlight.TagState.Ignore"}}</option>
+                <option value="include" {{#if included}}selected{{/if}}>{{localize "FTAGS.Spotlight.TagState.Include"}}</option>
+                <option value="exclude" {{#if excluded}}selected{{/if}}>{{localize "FTAGS.Spotlight.TagState.Exclude"}}</option>
+              </select>
+            </label>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="hint">{{localize "FTAGS.Spotlight.NoFilterTags"}}</p>
+      {{/if}}
+    </div>
+
+    <div class="ftags-spotlight__filter-section">
+      <span class="ftags-spotlight__filter-label">{{localize "FTAGS.Spotlight.ObjectTypes"}}</span>
+      <div class="ftags-spotlight__type-filters">
+        {{#each documentTypes}}
+          <label><input type="checkbox" value="{{value}}" data-ftags-document-type {{#if checked}}checked{{/if}}> <span>{{label}}</span></label>
+        {{/each}}
+      </div>
+      <label class="ftags-spotlight__filter-field">
+        <span>{{localize "FTAGS.Spotlight.Sort.Label"}}</span>
+        <select data-ftags-sort>
+          {{#each sortOptions}}
+            <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        </select>
+      </label>
+    </div>
+  </section>
 </div>

@@ -1,7 +1,8 @@
 import {
   MAX_TAG_NAME_LENGTH,
   MAX_VISIBLE_TAGS,
-  SCHEMA_VERSION
+  SCHEMA_VERSION,
+  SPOTLIGHT_DOCUMENT_TYPES
 } from "../constants.js";
 
 const TAG_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -177,7 +178,7 @@ export function contrastTextColor(hex) {
     channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
   ));
   const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
-  return luminance > 0.42 ? "#111111" : "#FFFFFF";
+  return luminance > 0.179 ? "#111111" : "#FFFFFF";
 }
 
 export function collectFolderDocuments(folder) {
@@ -209,6 +210,44 @@ export function cleanFilterState(raw, validTagIds) {
     if (cleaned.length) result[documentName] = cleaned;
   }
   return result;
+}
+
+export function defaultSpotlightFilterState() {
+  return {
+    includeTagIds: [],
+    excludeTagIds: [],
+    matchMode: "any",
+    documentTypes: [...SPOTLIGHT_DOCUMENT_TYPES],
+    sortBy: "relevance"
+  };
+}
+
+export function normalizeSpotlightFilterState(raw, validTagIds = null) {
+  const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const valid = validTagIds instanceof Set ? validTagIds : (validTagIds ? new Set(validTagIds) : null);
+  const includeTagIds = sanitizeTagIds(source.includeTagIds, valid);
+  const included = new Set(includeTagIds);
+  const excludeTagIds = sanitizeTagIds(source.excludeTagIds, valid).filter((id) => !included.has(id));
+  const knownTypes = new Set(SPOTLIGHT_DOCUMENT_TYPES);
+  const documentTypes = Array.isArray(source.documentTypes)
+    ? [...new Set(source.documentTypes.map(String).filter((type) => knownTypes.has(type)))]
+    : [...SPOTLIGHT_DOCUMENT_TYPES];
+  return {
+    includeTagIds,
+    excludeTagIds,
+    matchMode: source.matchMode === "all" ? "all" : "any",
+    documentTypes,
+    sortBy: ["relevance", "name", "type"].includes(source.sortBy) ? source.sortBy : "relevance"
+  };
+}
+
+export function countSpotlightFilters(raw) {
+  const state = normalizeSpotlightFilterState(raw);
+  let count = state.includeTagIds.length + state.excludeTagIds.length;
+  if (state.matchMode === "all" && state.includeTagIds.length > 1) count += 1;
+  if (state.documentTypes.length !== SPOTLIGHT_DOCUMENT_TYPES.length) count += 1;
+  if (state.sortBy !== "relevance") count += 1;
+  return count;
 }
 
 export function sortTags(tags) {
