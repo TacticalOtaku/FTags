@@ -1,3 +1,5 @@
+import {normalizeSpotlightFilterState} from "./model.js";
+
 const COMBINING_MARKS = /[\u0300-\u036f]/g;
 
 export function foldSearchText(value) {
@@ -22,12 +24,14 @@ export function buildSpotlightIndex(records) {
     }));
 }
 
-export function searchSpotlightIndex(index, query, {limit = 100} = {}) {
+export function searchSpotlightIndex(index, query, {limit = 100, filters = null} = {}) {
   const tokens = tokenizeQuery(query);
   const safeLimit = Math.max(0, Number.isFinite(limit) ? Math.trunc(limit) : 100);
+  const cleanFilters = normalizeSpotlightFilterState(filters);
   const matches = [];
 
   for (const record of index ?? []) {
+    if (!matchesSpotlightFilters(record, cleanFilters)) continue;
     const search = record?._spotlight ?? {
       order: matches.length,
       name: foldSearchText(record?.name),
@@ -48,14 +52,34 @@ export function searchSpotlightIndex(index, query, {limit = 100} = {}) {
   }
 
   return matches
-    .sort((left, right) => (
-      left.score - right.score
-      || left.search.name.localeCompare(right.search.name)
-      || String(left.record.entityType ?? "").localeCompare(String(right.record.entityType ?? ""))
-      || left.search.order - right.search.order
-    ))
+    .sort((left, right) => compareMatches(left, right, cleanFilters.sortBy))
     .slice(0, safeLimit)
     .map(({record}) => record);
+}
+
+export function matchesSpotlightFilters(record, rawFilters) {
+  const filters = normalizeSpotlightFilterState(rawFilters);
+  const documentType = record?.documentName ?? (record?.isFolder ? "Folder" : record?.entityType);
+  if (!filters.documentTypes.includes(documentType)) return false;
+
+  const tagIds = new Set((record?.tags ?? []).map((tag) => tag?.id).filter(Boolean));
+  if (filters.excludeTagIds.some((id) => tagIds.has(id))) return false;
+  if (!filters.includeTagIds.length) return true;
+  return filters.matchMode === "all"
+    ? filters.includeTagIds.every((id) => tagIds.has(id))
+    : filters.includeTagIds.some((id) => tagIds.has(id));
+}
+
+function compareMatches(left, right, sortBy) {
+  const byName = left.search.name.localeCompare(right.search.name);
+  const byType = getResultType(left.record).localeCompare(getResultType(right.record));
+  if (sortBy === "name") return byName || byType || left.search.order - right.search.order;
+  if (sortBy === "type") return byType || byName || left.search.order - right.search.order;
+  return left.score - right.score || byName || byType || left.search.order - right.search.order;
+}
+
+function getResultType(record) {
+  return String(record?.documentName ?? (record?.isFolder ? "Folder" : record?.entityType) ?? "");
 }
 
 function tokenizeQuery(query) {

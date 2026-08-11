@@ -1,6 +1,7 @@
-import {MODULE_ID} from "../constants.js";
-import {contrastTextColor} from "../core/model.js";
+import {MODULE_ID, SPOTLIGHT_DOCUMENT_TYPES} from "../constants.js";
+import {countSpotlightFilters, defaultSpotlightFilterState} from "../core/model.js";
 import {tagService} from "../runtime.js";
+import {notifyError} from "./notifications.js";
 
 const {ApplicationV2, HandlebarsApplicationMixin} = foundry.applications.api;
 const RESULT_LIMIT = 100;
@@ -20,10 +21,12 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "ftags-spotlight",
     classes: ["ftags-app", "ftags-spotlight-app"],
-    position: {width: 640, height: "auto"},
+    position: {width: 680, height: "auto"},
     window: {icon: "fa-solid fa-magnifying-glass", resizable: true},
     actions: {
-      openResult: this.#openResult
+      openResult: this.#openResult,
+      resetFilters: this.#resetFilters,
+      toggleFilters: this.#toggleFilters
     }
   };
 
@@ -42,6 +45,9 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
     this.selectedIndex = 0;
     this.index = null;
     this.results = [];
+    this.filters = null;
+    this.filtersOpen = false;
+    this.filterSaveTimer = null;
   }
 
   get title() {
@@ -54,17 +60,23 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   markDirty() {
     this.index = null;
+    this.filters = null;
   }
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     this.index ??= tagService.buildSpotlightIndex();
-    this.results = tagService.searchSpotlight(this.index, this.query, {limit: RESULT_LIMIT});
+    this.filters ??= await tagService.getSpotlightFilters();
+    this.results = tagService.searchSpotlight(this.index, this.query, {
+      limit: RESULT_LIMIT,
+      filters: this.filters
+    });
     this.selectedIndex = clampIndex(this.selectedIndex, this.results.length);
     const resultCount = this.results.length;
     return {
       ...context,
       query: this.query,
+      ...prepareFilters(this.filters, this.filtersOpen),
       results: this.results.map((record, index) => prepareResult(record, index === this.selectedIndex, index)),
       hasIndex: Boolean(this.index.length),
       hasResults: Boolean(resultCount),
@@ -93,6 +105,25 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
       searchInput.addEventListener("keydown", (event) => this.#onKeyDown(event));
     }
 
+    const searchPart = this.parts.search;
+    if (searchPart && !searchPart.dataset.ftagsFiltersBound) {
+      searchPart.dataset.ftagsFiltersBound = "true";
+      for (const select of searchPart.querySelectorAll("[data-ftags-tag-filter]")) {
+        select.addEventListener("change", () => this.#updateTagFilter(select.dataset.tagId, select.value));
+      }
+      searchPart.querySelector("[data-ftags-match-mode]")?.addEventListener("change", (event) => {
+        this.filters.matchMode = event.currentTarget.value === "all" ? "all" : "any";
+        this.#filtersChanged();
+      });
+      searchPart.querySelector("[data-ftags-sort]")?.addEventListener("change", (event) => {
+        this.filters.sortBy = event.currentTarget.value;
+        this.#filtersChanged();
+      });
+      for (const checkbox of searchPart.querySelectorAll("[data-ftags-document-type]")) {
+        checkbox.addEventListener("change", () => this.#updateDocumentType(checkbox.value, checkbox.checked));
+      }
+    }
+
     for (const [index, result] of [...(this.parts.results?.querySelectorAll("[data-ftags-result]") ?? [])].entries()) {
       result.addEventListener("pointerenter", () => {
         this.selectedIndex = index;
@@ -106,6 +137,63 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const input = this.parts.search?.querySelector("[data-ftags-spotlight-search]");
     input?.focus();
     input?.select();
+  }
+
+  async activate({includeTagId = null} = {}) {
+    this.filters ??= await tagService.getSpotlightFilters();
+    if (includeTagId) {
+      this.filters.excludeTagIds = this.filters.excludeTagIds.filter((id) => id !== includeTagId);
+      if (!this.filters.includeTagIds.includes(includeTagId)) this.filters.includeTagIds.push(includeTagId);
+      this.filters = await tagService.setSpotlightFilters(this.filters);
+      this.filtersOpen = true;
+      this.selectedIndex = 0;
+    }
+
+    if (this.rendered) {
+      this.bringToFront();
+      if (includeTagId) await this.render({parts: ["search", "results"]});
+      this.focusSearch();
+      return this;
+    }
+    await this.render({force: true});
+    return this;
+  }
+
+  #updateTagFilter(tagId, state) {
+    this.filters.includeTagIds = this.filters.includeTagIds.filter((id) => id !== tagId);
+    this.filters.excludeTagIds = this.filters.excludeTagIds.filter((id) => id !== tagId);
+    if (state === "include") this.filters.includeTagIds.push(tagId);
+    else if (state === "exclude") this.filters.excludeTagIds.push(tagId);
+    this.#filtersChanged();
+  }
+
+  #updateDocumentType(documentType, enabled) {
+    const types = new Set(this.filters.documentTypes);
+    if (enabled) types.add(documentType);
+    else types.delete(documentType);
+    this.filters.documentTypes = SPOTLIGHT_DOCUMENT_TYPES.filter((type) => types.has(type));
+    this.#filtersChanged();
+  }
+
+  #filtersChanged() {
+    this.selectedIndex = 0;
+    this.#syncFilterCount();
+    clearTimeout(this.filterSaveTimer);
+    this.filterSaveTimer = setTimeout(() => {
+      void tagService.setSpotlightFilters(this.filters).catch((error) => notifyError(error));
+    }, 120);
+    void this.render({parts: ["results"]});
+  }
+
+  #syncFilterCount() {
+    const count = countSpotlightFilters(this.filters);
+    const button = this.parts.search?.querySelector("[data-ftags-filter-toggle]");
+    const badge = button?.querySelector("[data-ftags-filter-count]");
+    if (badge) {
+      badge.textContent = String(count);
+      badge.hidden = !count;
+    }
+    button?.setAttribute("aria-label", game.i18n.format("FTAGS.Spotlight.FiltersButton", {count}));
   }
 
   #onKeyDown(event) {
@@ -154,6 +242,22 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const record = this.results.find((candidate) => candidate.uuid === target.dataset.uuid);
     return this.openRecord(record);
   }
+
+  /** @this {SpotlightApp} */
+  static #toggleFilters(_event, target) {
+    this.filtersOpen = !this.filtersOpen;
+    target.setAttribute("aria-expanded", String(this.filtersOpen));
+    const panel = this.parts.search?.querySelector("[data-ftags-filter-panel]");
+    if (panel) panel.hidden = !this.filtersOpen;
+  }
+
+  /** @this {SpotlightApp} */
+  static async #resetFilters() {
+    clearTimeout(this.filterSaveTimer);
+    this.filters = await tagService.setSpotlightFilters(defaultSpotlightFilterState());
+    this.selectedIndex = 0;
+    return this.render({parts: ["search", "results"]});
+  }
 }
 
 let activeSpotlight = null;
@@ -172,16 +276,53 @@ export function registerSpotlightKeybinding() {
   });
 }
 
-export function openSpotlight() {
+export function openSpotlight(options = {}) {
   if (!game.user?.isGM) return null;
-  if (activeSpotlight?.rendered) {
-    activeSpotlight.bringToFront();
-    activeSpotlight.focusSearch();
-    return activeSpotlight;
-  }
-  activeSpotlight = new SpotlightApp();
-  void activeSpotlight.render({force: true});
+  if (!activeSpotlight?.rendered) activeSpotlight = new SpotlightApp();
+  void activeSpotlight.activate(options).catch((error) => notifyError(error));
   return activeSpotlight;
+}
+
+function prepareFilters(filters, filtersOpen) {
+  const include = new Set(filters.includeTagIds);
+  const exclude = new Set(filters.excludeTagIds);
+  const enabledTypes = new Set(filters.documentTypes);
+  const filterCount = countSpotlightFilters(filters);
+  return {
+    filtersOpen,
+    filterCount,
+    hasActiveFilters: Boolean(filterCount),
+    filtersButtonLabel: game.i18n.format("FTAGS.Spotlight.FiltersButton", {count: filterCount}),
+    filterTags: tagService.listTags().map((tag) => ({
+      ...tag,
+      ignored: !include.has(tag.id) && !exclude.has(tag.id),
+      included: include.has(tag.id),
+      excluded: exclude.has(tag.id)
+    })),
+    hasFilterTags: Boolean(tagService.listTags().length),
+    matchModes: [
+      {value: "any", key: "FTAGS.Spotlight.Match.Any"},
+      {value: "all", key: "FTAGS.Spotlight.Match.All"}
+    ].map(({value, key}) => ({
+      value,
+      selected: filters.matchMode === value,
+      label: game.i18n.localize(key)
+    })),
+    documentTypes: SPOTLIGHT_DOCUMENT_TYPES.map((value) => ({
+      value,
+      checked: enabledTypes.has(value),
+      label: game.i18n.localize(TYPE_LOCALIZATION_KEYS[value])
+    })),
+    sortOptions: [
+      {value: "relevance", key: "FTAGS.Spotlight.Sort.Relevance"},
+      {value: "name", key: "FTAGS.Spotlight.Sort.Name"},
+      {value: "type", key: "FTAGS.Spotlight.Sort.Type"}
+    ].map(({value, key}) => ({
+      value,
+      selected: filters.sortBy === value,
+      label: game.i18n.localize(key)
+    }))
+  };
 }
 
 function prepareResult(record, selected, index) {
@@ -202,7 +343,7 @@ function prepareResult(record, selected, index) {
       metadata,
       tags: record.tags.map((tag) => tag.name).join(", ")
     }),
-    tags: record.tags.map((tag) => ({...tag, foreground: contrastTextColor(tag.color)}))
+    tags: record.tags
   };
 }
 

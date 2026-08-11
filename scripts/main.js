@@ -10,7 +10,10 @@ import {openSpotlight, registerSpotlightKeybinding, SpotlightApp} from "./ui/spo
 Hooks.once("init", () => {
   tagRepository.registerSettings({
     managerType: TagManagerApp,
-    onDataChange: () => scheduleRefresh()
+    onDataChange: (reason) => {
+      if (reason === "spotlight-filters") refreshOpenSpotlights();
+      else scheduleRefresh();
+    }
   });
   registerContextMenuHooks();
   registerDirectoryHooks();
@@ -33,6 +36,7 @@ Hooks.once("ready", async () => {
   try {
     const valid = new Set(tagService.listTags().map((tag) => tag.id));
     await tagRepository.cleanSavedFilters(valid);
+    await tagRepository.cleanSpotlightFilters(valid);
     scheduleRefresh();
   } catch (error) {
     notifyError(error);

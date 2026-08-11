@@ -2,6 +2,7 @@ import {BULK_CONCURRENCY, MODULE_ID, SCHEMA_VERSION} from "../constants.js";
 import {
   createTagId,
   mergeDictionaries,
+  normalizeSpotlightFilterState,
   normalizeTagColor,
   normalizeTagName,
   sanitizeTagIds,
@@ -67,6 +68,7 @@ export class TagService {
     dictionary.tags = dictionary.tags.filter((candidate) => candidate.id !== tagId);
     await this.repository.setDictionary(dictionary);
     await this.repository.cleanSavedFilters(new Set(dictionary.tags.map((candidate) => candidate.id)));
+    await this.repository.cleanSpotlightFilters?.(new Set(dictionary.tags.map((candidate) => candidate.id)));
     return {tag, deleted: true, cleaned: result.success, failed: 0, errors: []};
   }
 
@@ -155,6 +157,24 @@ export class TagService {
     return searchSpotlightIndex(index, query, options);
   }
 
+  async getSpotlightFilters() {
+    const valid = new Set(this.listTags().map((tag) => tag.id));
+    const current = this.repository.getSpotlightFilterState();
+    const cleaned = normalizeSpotlightFilterState(current, valid);
+    if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
+      await this.repository.setSpotlightFilterState(cleaned);
+    }
+    return cleaned;
+  }
+
+  async setSpotlightFilters(state) {
+    this.repository.assertGM();
+    const valid = new Set(this.listTags().map((tag) => tag.id));
+    const cleaned = normalizeSpotlightFilterState(state, valid);
+    await this.repository.setSpotlightFilterState(cleaned);
+    return cleaned;
+  }
+
   exportDictionary() {
     const dictionary = this.repository.getDictionary();
     return JSON.stringify({
@@ -176,6 +196,7 @@ export class TagService {
     const preview = this.previewImport(raw);
     await this.repository.setDictionary(preview.dictionary);
     await this.repository.cleanSavedFilters(new Set(preview.dictionary.tags.map((tag) => tag.id)));
+    await this.repository.cleanSpotlightFilters?.(new Set(preview.dictionary.tags.map((tag) => tag.id)));
     return preview;
   }
 }
