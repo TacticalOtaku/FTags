@@ -35,7 +35,6 @@ Hooks.once("ready", async () => {
   if (!game.user?.isGM) return;
   try {
     const valid = new Set(tagService.listTags().map((tag) => tag.id));
-    await tagRepository.cleanSavedFilters(valid);
     await tagRepository.cleanSpotlightFilters(valid);
     scheduleRefresh();
   } catch (error) {
@@ -82,7 +81,6 @@ function registerDocumentUpdateHooks() {
     ) refreshOpenSpotlights();
   };
   const lifecycleCallback = () => refreshOpenSpotlights();
-  Hooks.on("updateDocument", callback);
   Hooks.on("updateFolder", callback);
   Hooks.on("createFolder", lifecycleCallback);
   Hooks.on("deleteFolder", lifecycleCallback);

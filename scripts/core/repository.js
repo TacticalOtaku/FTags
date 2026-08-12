@@ -6,7 +6,6 @@ import {
   SUPPORTED_DOCUMENT_TYPES
 } from "../constants.js";
 import {
-  cleanFilterState,
   coerceDictionary,
   collectFolderDocuments,
   defaultSpotlightFilterState,
@@ -25,16 +24,6 @@ export class TagRepository {
       type: Object,
       default: emptyDictionary(),
       onChange: () => onDataChange?.("dictionary")
-    });
-
-    game.settings.register(MODULE_ID, SETTINGS.FILTERS, {
-      name: "FTAGS.Settings.FiltersName",
-      hint: "FTAGS.Settings.FiltersHint",
-      scope: "user",
-      config: false,
-      type: Object,
-      default: {},
-      onChange: () => onDataChange?.("filters")
     });
 
     game.settings.register(MODULE_ID, SETTINGS.SPOTLIGHT_FILTERS, {
@@ -83,39 +72,6 @@ export class TagRepository {
     if (arraysEqual(current, clean)) return document;
     if (!clean.length) return document.unsetFlag(MODULE_ID, FLAGS.TAG_IDS);
     return document.setFlag(MODULE_ID, FLAGS.TAG_IDS, clean);
-  }
-
-  getSavedFilterState() {
-    const raw = game.settings.get(MODULE_ID, SETTINGS.FILTERS);
-    return raw && typeof raw === "object" && !Array.isArray(raw) ? structuredClone(raw) : {};
-  }
-
-  async setSavedFilterState(state) {
-    this.assertGM();
-    return game.settings.set(MODULE_ID, SETTINGS.FILTERS, state);
-  }
-
-  getSavedFilter(documentName) {
-    return sanitizeTagIds(this.getSavedFilterState()[documentName]);
-  }
-
-  async setSavedFilter(documentName, tagIds) {
-    this.assertGM();
-    const state = this.getSavedFilterState();
-    const clean = sanitizeTagIds(tagIds);
-    if (clean.length) state[documentName] = clean;
-    else delete state[documentName];
-    return this.setSavedFilterState(state);
-  }
-
-  async cleanSavedFilters(validTagIds) {
-    this.assertGM();
-    const current = this.getSavedFilterState();
-    const cleaned = cleanFilterState(current, validTagIds);
-    if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
-      await this.setSavedFilterState(cleaned);
-    }
-    return cleaned;
   }
 
   getSpotlightFilterState() {

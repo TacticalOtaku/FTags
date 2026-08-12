@@ -3,11 +3,11 @@ export const MODULE_TITLE = "FTags";
 export const SCHEMA_VERSION = 1;
 export const MAX_VISIBLE_TAGS = 3;
 export const MAX_TAG_NAME_LENGTH = 48;
+export const MAX_TAG_COUNT = 500;
 export const BULK_CONCURRENCY = 5;
 
 export const SETTINGS = Object.freeze({
   DICTIONARY: "tagDictionary",
-  FILTERS: "savedFilters",
   SPOTLIGHT_FILTERS: "spotlightFilters",
   MANAGER: "tagManager"
 });

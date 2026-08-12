@@ -4,6 +4,7 @@ const ERROR_KEYS = Object.freeze({
   "gm-only": "FTAGS.Errors.GMOnly",
   "name-required": "FTAGS.Errors.NameRequired",
   "name-too-long": "FTAGS.Errors.NameTooLong",
+  "too-many-tags": "FTAGS.Errors.TooManyTags",
   "duplicate-name": "FTAGS.Errors.DuplicateName",
   "import-name-conflict": "FTAGS.Errors.DuplicateName",
   "invalid-color": "FTAGS.Errors.InvalidColor"

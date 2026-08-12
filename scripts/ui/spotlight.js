@@ -47,6 +47,7 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
     this.results = [];
     this.filters = null;
     this.filtersOpen = false;
+    this.searchTimer = null;
     this.filterSaveTimer = null;
   }
 
@@ -95,12 +96,11 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const searchInput = this.parts.search?.querySelector("[data-ftags-spotlight-search]");
     if (searchInput && !searchInput.dataset.ftagsBound) {
       searchInput.dataset.ftagsBound = "true";
-      let timer = null;
       searchInput.addEventListener("input", () => {
         this.query = searchInput.value;
         this.selectedIndex = 0;
-        clearTimeout(timer);
-        timer = setTimeout(() => void this.render({parts: ["results"]}), 75);
+        clearTimeout(this.searchTimer);
+        this.searchTimer = setTimeout(() => void this.render({parts: ["results"]}), 75);
       });
       searchInput.addEventListener("keydown", (event) => this.#onKeyDown(event));
     }
@@ -131,6 +131,12 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
       });
     }
     this.#syncSelection();
+  }
+
+  async _preClose(options) {
+    clearTimeout(this.searchTimer);
+    this.searchTimer = null;
+    await super._preClose(options);
   }
 
   focusSearch() {
@@ -288,18 +294,19 @@ function prepareFilters(filters, filtersOpen) {
   const exclude = new Set(filters.excludeTagIds);
   const enabledTypes = new Set(filters.documentTypes);
   const filterCount = countSpotlightFilters(filters);
+  const tags = tagService.listTags();
   return {
     filtersOpen,
     filterCount,
     hasActiveFilters: Boolean(filterCount),
     filtersButtonLabel: game.i18n.format("FTAGS.Spotlight.FiltersButton", {count: filterCount}),
-    filterTags: tagService.listTags().map((tag) => ({
+    filterTags: tags.map((tag) => ({
       ...tag,
       ignored: !include.has(tag.id) && !exclude.has(tag.id),
       included: include.has(tag.id),
       excluded: exclude.has(tag.id)
     })),
-    hasFilterTags: Boolean(tagService.listTags().length),
+    hasFilterTags: Boolean(tags.length),
     matchModes: [
       {value: "any", key: "FTAGS.Spotlight.Match.Any"},
       {value: "all", key: "FTAGS.Spotlight.Match.All"}
