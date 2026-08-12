@@ -1,5 +1,6 @@
-import {BULK_CONCURRENCY, MODULE_ID, SCHEMA_VERSION} from "../constants.js";
+import {BULK_CONCURRENCY, MAX_TAG_COUNT, MODULE_ID, SCHEMA_VERSION} from "../constants.js";
 import {
+  TagValidationError,
   createTagId,
   mergeDictionaries,
   normalizeSpotlightFilterState,
@@ -28,6 +29,9 @@ export class TagService {
   async createTag({name, color}) {
     this.repository.assertGM();
     const dictionary = this.repository.getDictionary();
+    if (dictionary.tags.length >= MAX_TAG_COUNT) {
+      throw new TagValidationError("too-many-tags", {max: MAX_TAG_COUNT});
+    }
     const tag = validateTagDraft({id: createTagId(), name, color}, dictionary.tags);
     dictionary.tags = sortTags([...dictionary.tags, tag]);
     await this.repository.setDictionary(dictionary);
@@ -67,7 +71,6 @@ export class TagService {
 
     dictionary.tags = dictionary.tags.filter((candidate) => candidate.id !== tagId);
     await this.repository.setDictionary(dictionary);
-    await this.repository.cleanSavedFilters(new Set(dictionary.tags.map((candidate) => candidate.id)));
     await this.repository.cleanSpotlightFilters?.(new Set(dictionary.tags.map((candidate) => candidate.id)));
     return {tag, deleted: true, cleaned: result.success, failed: 0, errors: []};
   }
@@ -104,33 +107,6 @@ export class TagService {
       const next = sanitizeTagIds([...this.repository.getTagIds(document), ...additions], valid);
       await this.repository.setTagIds(document, next);
     });
-  }
-
-  async getActiveFilters(documentName) {
-    const dictionary = this.repository.getDictionary();
-    const valid = new Set(dictionary.tags.map((tag) => tag.id));
-    const current = this.repository.getSavedFilter(documentName);
-    const cleaned = sanitizeTagIds(current, valid);
-    if (!arraysEqual(current, cleaned)) await this.repository.setSavedFilter(documentName, cleaned);
-    return new Set(cleaned);
-  }
-
-  async toggleFilter(documentName, tagId) {
-    this.repository.assertGM();
-    const dictionary = this.repository.getDictionary();
-    const valid = new Set(dictionary.tags.map((tag) => tag.id));
-    if (!valid.has(tagId)) return this.getActiveFilters(documentName);
-    const active = await this.getActiveFilters(documentName);
-    if (active.has(tagId)) active.delete(tagId);
-    else active.add(tagId);
-    await this.repository.setSavedFilter(documentName, [...active]);
-    return active;
-  }
-
-  async clearFilters(documentName) {
-    this.repository.assertGM();
-    await this.repository.setSavedFilter(documentName, []);
-    return new Set();
   }
 
   buildSpotlightIndex() {
@@ -195,7 +171,6 @@ export class TagService {
     this.repository.assertGM();
     const preview = this.previewImport(raw);
     await this.repository.setDictionary(preview.dictionary);
-    await this.repository.cleanSavedFilters(new Set(preview.dictionary.tags.map((tag) => tag.id)));
     await this.repository.cleanSpotlightFilters?.(new Set(preview.dictionary.tags.map((tag) => tag.id)));
     return preview;
   }
@@ -230,8 +205,4 @@ export async function runWithConcurrency(items, concurrency, operation) {
   });
   await Promise.all(workers);
   return {success, failed: errors.length, errors};
-}
-
-function arraysEqual(left, right) {
-  return left.length === right.length && left.every((value, index) => value === right[index]);
 }

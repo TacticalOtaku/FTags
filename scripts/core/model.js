@@ -1,4 +1,5 @@
 import {
+  MAX_TAG_COUNT,
   MAX_TAG_NAME_LENGTH,
   MAX_VISIBLE_TAGS,
   SCHEMA_VERSION,
@@ -92,7 +93,9 @@ export function validateDictionaryPayload(raw) {
     });
   }
   if (!Array.isArray(raw.tags)) throw new TagValidationError("tags-required");
-  if (raw.tags.length > 500) throw new TagValidationError("too-many-tags", {max: 500});
+  if (raw.tags.length > MAX_TAG_COUNT) {
+    throw new TagValidationError("too-many-tags", {max: MAX_TAG_COUNT});
+  }
 
   const tags = raw.tags.map((tag) => normalizeTag(tag));
   assertUniqueTags(tags);
@@ -133,6 +136,10 @@ export function mergeDictionaries(currentRaw, importedRaw) {
     if (previous) currentNameOwners.delete(previous.name.toLocaleLowerCase());
     currentNameOwners.set(nameKey, tag.id);
     byId.set(tag.id, tag);
+  }
+
+  if (byId.size > MAX_TAG_COUNT) {
+    throw new TagValidationError("too-many-tags", {max: MAX_TAG_COUNT});
   }
 
   return {
@@ -199,17 +206,6 @@ export function collectFolderDocuments(folder) {
 
   visit(folder);
   return documents;
-}
-
-export function cleanFilterState(raw, validTagIds) {
-  const valid = validTagIds instanceof Set ? validTagIds : new Set(validTagIds ?? []);
-  const result = {};
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return result;
-  for (const [documentName, tagIds] of Object.entries(raw)) {
-    const cleaned = sanitizeTagIds(tagIds, valid);
-    if (cleaned.length) result[documentName] = cleaned;
-  }
-  return result;
 }
 
 export function defaultSpotlightFilterState() {

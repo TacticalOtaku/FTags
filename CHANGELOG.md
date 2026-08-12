@@ -2,7 +2,12 @@
 
 ## 1.1.5
 
-- Changed the release version only; functionality and visuals are identical to the previously prepared build.
+- Kept the requested 1.1.5 release number and the previously prepared visuals.
+- Enforced the 500-tag dictionary capacity consistently for creation, import, and merged imports.
+- Centralized the 48-character tag-name limit across validation and manager inputs.
+- Corrected current documentation to describe circular directory markers.
+- Removed the obsolete per-directory `savedFilters` subsystem; filtering and persistence now belong exclusively to Spotlight.
+- Added a dependency-free Foundry UI behavior harness for directories, popouts, GM/player visibility, context actions, assignment, manager creation, Spotlight opening, and close/debounce lifecycle.
 
 ## 1.2.4
 

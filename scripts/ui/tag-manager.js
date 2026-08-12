@@ -1,4 +1,4 @@
-import {MODULE_ID} from "../constants.js";
+import {MAX_TAG_NAME_LENGTH, MODULE_ID} from "../constants.js";
 import {tagService} from "../runtime.js";
 import {notifyError, notifyInfo, notifyWarn} from "./notifications.js";
 
@@ -39,7 +39,13 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     const tags = tagService.listTags();
-    return {...context, tags, hasTags: Boolean(tags.length), hasNoTags: !tags.length};
+    return {
+      ...context,
+      tags,
+      hasTags: Boolean(tags.length),
+      hasNoTags: !tags.length,
+      maxTagNameLength: MAX_TAG_NAME_LENGTH
+    };
   }
 
   async refreshRelatedApps() {
@@ -181,7 +187,7 @@ function editDialogContent(tag) {
   const nameInput = document.createElement("input");
   nameInput.name = "name";
   nameInput.type = "text";
-  nameInput.maxLength = 48;
+  nameInput.maxLength = MAX_TAG_NAME_LENGTH;
   nameInput.value = tag.name;
   nameLabel.append(nameText, nameInput);
 

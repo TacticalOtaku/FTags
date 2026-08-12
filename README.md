@@ -84,7 +84,7 @@ npm run validate
 npm run validate:foundry -- "PATH/TO/Foundry Virtual Tabletop/resources/app"
 ```
 
-The automated suite covers tag normalization, three-marker overflow partitioning, contrast selection, recursive folder traversal, Spotlight tokenization/ranking, include/exclude and ANY/ALL filtering, object types, sorting, import/export merge behavior, saved-filter cleanup, manifest compatibility, and localization parity. The optional Foundry check verifies the directory, ApplicationV2, settings, and editable GM keybinding integration surfaces against an exact local 14.363.0 installation.
+The automated suite covers tag normalization and dictionary limits, three-marker overflow partitioning, contrast selection, recursive folder traversal, Spotlight tokenization/ranking, include/exclude and ANY/ALL filtering, object types, sorting, import/export merge behavior, manifest compatibility, and localization parity. A dependency-free Foundry UI harness also executes directory/popout rendering, GM/player visibility, document and folder context actions, assignment writes, manager creation, Spotlight opening, and close/debounce behavior. The optional Foundry check verifies the directory, ApplicationV2, settings, and editable GM keybinding integration surfaces against an exact local 14.363.0 installation.
 
 ### Manual Foundry 14.363 matrix
 
@@ -106,8 +106,8 @@ Repeat the core flow for Actor, Item, Scene, JournalEntry, RollTable, Cards, Pla
 
 ## Русское описание
 
-FTags добавляет GM-метки к стандартным спискам Foundry VTT. Рядом с сущностями показываются только тонкие цветовые полосы без текста, поэтому модуль не меняет шрифт и плотность строк Foundry/Plutonium; названия меток доступны в подсказке и Spotlight. Метки общие для всех GM мира, игрокам интерфейс модуля не показывается. Поддерживаются актёры, предметы, сцены, журналы, таблицы, карточные колоды, плейлисты, макросы и папки. Расширенные фильтры Spotlight поддерживают включение, исключение, режимы «любая/все», типы объектов и сортировку; настройки сохраняются отдельно для каждого GM.
+FTags добавляет GM-метки к стандартным спискам Foundry VTT. Рядом с сущностями показываются только компактные цветные точки без текста, поэтому модуль не меняет шрифт и плотность строк Foundry/Plutonium; названия меток доступны в подсказке и Spotlight. Метки общие для всех GM мира, игрокам интерфейс модуля не показывается. Поддерживаются актёры, предметы, сцены, журналы, таблицы, карточные колоды, плейлисты, макросы и папки. Расширенные фильтры Spotlight поддерживают включение, исключение, режимы «любая/все», типы объектов и сортировку; настройки сохраняются отдельно для каждого GM.
 
 Установка: распакуйте папку `ftags` в `Data/modules`, перезапустите Foundry и включите модуль в нужном мире. Управление словарём находится в настройках модулей, а назначение — в контекстном меню сущности или папки.
 
-Spotlight вызывается назначаемой клавишей в **Настройках управления → FTags**, кнопкой-лупой или кликом по отдельной цветовой полосе. Он показывает только объекты мира с метками, ищет по названиям объектов и меток, а префикс `#` ограничивает слово названиями меток. В результатах Spotlight метки отображаются крупными контрастными цветными чипами; длинные названия раскрываются подсказкой, а узкое окно допускает перенос на две строки. FTags больше не скрывает строки стандартных каталогов.
+Spotlight вызывается назначаемой клавишей в **Настройках управления → FTags**, кнопкой-лупой или кликом по отдельной цветной точке. Он показывает только объекты мира с метками, ищет по названиям объектов и меток, а префикс `#` ограничивает слово названиями меток. В результатах Spotlight метки отображаются крупными контрастными цветными чипами; длинные названия раскрываются подсказкой, а узкое окно допускает перенос на две строки. FTags больше не скрывает строки стандартных каталогов.

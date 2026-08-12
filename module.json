@@ -30,5 +30,8 @@
       "name": "Русский",
       "path": "lang/ru.json"
     }
-  ]
+  ],
+  "url": "https://github.com/TacticalOtaku/FTags",
+  "manifest": "https://raw.githubusercontent.com/TacticalOtaku/FTags/main/module.json",
+  "download": "https://github.com/TacticalOtaku/FTags/releases/download/1.1.5/ftags-1.1.5.zip"
 }
