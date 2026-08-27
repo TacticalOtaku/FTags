@@ -39,6 +39,7 @@
   "FTAGS.Assignment.SaveSuccess": "Tags saved.",
   "FTAGS.Assignment.ApplySuccess": "Tags added to {count} folder documents.",
   "FTAGS.Assignment.ApplyPartial": "Updated {success} documents; {failed} failed. See the console for details.",
+  "FTAGS.Assignment.LockedPack": "This compendium pack is locked. Unlock it in the Compendium tab to save tag changes.",
   "FTAGS.Filter.Manage": "Manage tags",
   "FTAGS.Filter.FullList": "All tags: {names}",
   "FTAGS.Filter.OpenTag": "Search for objects tagged {name} in Spotlight",
@@ -54,8 +55,9 @@
   "FTAGS.Errors.DuplicateName": "A tag named “{name}” already exists.",
   "FTAGS.Errors.InvalidColor": "Choose a valid six-digit color.",
   "FTAGS.Errors.InvalidImport": "The selected file is not a valid FTags dictionary: {reason}",
-  "FTAGS.Errors.Generic": "FTags could not complete the operation. See the console for details."
-, "FTAGS.Filter.Search": "Search tagged objects",
+  "FTAGS.Errors.LockedCompendium": "Cannot modify tags in a locked compendium pack.",
+  "FTAGS.Errors.Generic": "FTags could not complete the operation. See the console for details.",
+  "FTAGS.Filter.Search": "Search tagged objects",
   "FTAGS.Keybindings.SpotlightName": "Open FTags Spotlight",
   "FTAGS.Keybindings.SpotlightHint": "Open the GM-only search for tagged world objects.",
   "FTAGS.Spotlight.Title": "FTags · Spotlight",
@@ -91,5 +93,6 @@
   "FTAGS.Types.Cards": "Cards",
   "FTAGS.Types.Playlist": "Playlist",
   "FTAGS.Types.Macro": "Macro",
-  "FTAGS.Types.Folder": "Folder"
+  "FTAGS.Types.Folder": "Folder",
+  "FTAGS.Types.Compendium": "Compendium"
 }

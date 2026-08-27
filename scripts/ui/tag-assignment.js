@@ -43,6 +43,8 @@ export class TagAssignmentApp extends HandlebarsApplicationMixin(ApplicationV2) 
     const tags = tagService.listTags().map((tag) => ({...tag, assigned: assigned.has(tag.id)}));
     const isFolder = this.targetDocument.documentName === "Folder";
     const folderContentCount = isFolder ? tagService.getFolderDocumentCount(this.targetDocument) : 0;
+    const pack = this.targetDocument.pack ? game.packs?.get(this.targetDocument.pack) : null;
+    const isLocked = Boolean(pack?.locked);
     return {
       ...context,
       targetName: this.targetDocument.name,
@@ -51,7 +53,9 @@ export class TagAssignmentApp extends HandlebarsApplicationMixin(ApplicationV2) 
       hasNoTags: !tags.length,
       isFolder,
       folderContentCount,
-      hasNoFolderContents: folderContentCount === 0
+      hasNoFolderContents: folderContentCount === 0,
+      isLocked,
+      packTitle: pack?.title ?? ""
     };
   }
 
@@ -84,9 +88,11 @@ export class TagAssignmentApp extends HandlebarsApplicationMixin(ApplicationV2) 
   }
 }
 
-export function openTagAssignment(targetDocument, parentApp = null) {
+export async function openTagAssignment(targetDocument, parentApp = null) {
   if (!game.user?.isGM) return null;
-  const app = new TagAssignmentApp(targetDocument);
+  const doc = await Promise.resolve(targetDocument);
+  if (!doc) return null;
+  const app = new TagAssignmentApp(doc);
   if (parentApp?.renderChild) return parentApp.renderChild(app, {force: true});
   return app.render({force: true});
 }

@@ -7,7 +7,8 @@ const ERROR_KEYS = Object.freeze({
   "too-many-tags": "FTAGS.Errors.TooManyTags",
   "duplicate-name": "FTAGS.Errors.DuplicateName",
   "import-name-conflict": "FTAGS.Errors.DuplicateName",
-  "invalid-color": "FTAGS.Errors.InvalidColor"
+  "invalid-color": "FTAGS.Errors.InvalidColor",
+  "locked-compendium": "FTAGS.Errors.LockedCompendium"
 });
 
 export function notifyError(error, fallbackKey = "FTAGS.Errors.Generic") {

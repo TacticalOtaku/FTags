@@ -58,13 +58,25 @@ export class TagRepository {
   }
 
   getTagIds(document) {
-    return sanitizeTagIds(document?.getFlag?.(MODULE_ID, FLAGS.TAG_IDS));
+    return sanitizeTagIds(
+      document?.getFlag?.(MODULE_ID, FLAGS.TAG_IDS)
+      ?? foundry.utils.getProperty(document, `flags.${MODULE_ID}.${FLAGS.TAG_IDS}`)
+    );
   }
 
   async setTagIds(document, tagIds) {
     this.assertGM();
-    if (!document || document.pack || !this.isTaggable(document)) {
+    if (!document || !this.isTaggable(document)) {
       throw new Error("Unsupported FTags document");
+    }
+
+    if (document.pack) {
+      const pack = game.packs?.get(document.pack);
+      if (pack?.locked) {
+        const error = new Error("locked-compendium");
+        error.code = "locked-compendium";
+        throw error;
+      }
     }
 
     const clean = sanitizeTagIds(tagIds);
@@ -115,6 +127,13 @@ export class TagRepository {
     ));
   }
 
+  getCompendiumPacks(documentName = null) {
+    return [...(game.packs?.contents ?? game.packs ?? [])].filter((pack) => (
+      SUPPORTED_DOCUMENT_TYPES.includes(pack.documentName)
+      && (!documentName || pack.documentName === documentName)
+    ));
+  }
+
   getAllTaggableObjects() {
     return [
       ...SUPPORTED_DOCUMENT_TYPES.flatMap((documentName) => this.getDocuments(documentName)),
@@ -124,7 +143,7 @@ export class TagRepository {
 
   getFolderDocuments(folder) {
     if (!folder || folder.documentName !== "Folder" || !SUPPORTED_DOCUMENT_TYPES.includes(folder.type)) return [];
-    return collectFolderDocuments(folder).filter((document) => this.isTaggable(document) && !document.pack);
+    return collectFolderDocuments(folder).filter((document) => this.isTaggable(document));
   }
 
   isTaggable(document) {

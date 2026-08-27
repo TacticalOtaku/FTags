@@ -39,6 +39,7 @@
   "FTAGS.Assignment.SaveSuccess": "Метки сохранены.",
   "FTAGS.Assignment.ApplySuccess": "Метки добавлены документам папки: {count}.",
   "FTAGS.Assignment.ApplyPartial": "Обновлено документов: {success}; ошибок: {failed}. Подробности в консоли.",
+  "FTAGS.Assignment.LockedPack": "Этот компендиум заблокирован. Разблокируйте его во вкладке «Компендиумы» для изменения меток.",
   "FTAGS.Filter.Manage": "Управление метками",
   "FTAGS.Filter.FullList": "Все метки: {names}",
   "FTAGS.Filter.OpenTag": "Найти в Spotlight объекты с меткой «{name}»",
@@ -54,8 +55,9 @@
   "FTAGS.Errors.DuplicateName": "Метка с названием «{name}» уже существует.",
   "FTAGS.Errors.InvalidColor": "Выберите корректный шестизначный цвет.",
   "FTAGS.Errors.InvalidImport": "Выбранный файл не является корректным словарём FTags: {reason}",
-  "FTAGS.Errors.Generic": "FTags не смог завершить операцию. Подробности в консоли."
-, "FTAGS.Filter.Search": "Найти объекты с метками",
+  "FTAGS.Errors.LockedCompendium": "Невозможно изменить метки в заблокированном компендиуме.",
+  "FTAGS.Errors.Generic": "FTags не смог завершить операцию. Подробности в консоли.",
+  "FTAGS.Filter.Search": "Найти объекты с метками",
   "FTAGS.Keybindings.SpotlightName": "Открыть FTags Spotlight",
   "FTAGS.Keybindings.SpotlightHint": "Открыть GM-поиск по объектам мира с метками.",
   "FTAGS.Spotlight.Title": "FTags · Spotlight",
@@ -91,5 +93,6 @@
   "FTAGS.Types.Cards": "Карты",
   "FTAGS.Types.Playlist": "Плейлист",
   "FTAGS.Types.Macro": "Макрос",
-  "FTAGS.Types.Folder": "Папка"
+  "FTAGS.Types.Folder": "Папка",
+  "FTAGS.Types.Compendium": "Компендиум"
 }
