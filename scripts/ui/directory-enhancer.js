@@ -51,10 +51,18 @@ export async function enhanceCompendiumDirectory(application, element) {
 export function renderSupportedDirectories() {
   if (!game.user?.isGM) return;
   for (const documentName of SUPPORTED_DOCUMENT_TYPES) {
-    tagRepository.getWorldCollection(documentName)?.render?.(true, {renderContext: "ftags"});
+    tagRepository.getWorldCollection(documentName)?.render?.(false, {renderContext: "ftags"});
   }
+  ui.compendium?.render?.(false, {renderContext: "ftags"});
   for (const pack of tagRepository.getCompendiumPacks()) {
-    pack.apps?.forEach?.((app) => app.render?.(true, {renderContext: "ftags"}));
+    const apps = pack.apps instanceof Map
+      ? pack.apps.values()
+      : (Array.isArray(pack.apps) ? pack.apps : Object.values(pack.apps ?? {}));
+    for (const app of apps) {
+      if (app?.rendered) {
+        void app.render(false, {renderContext: "ftags"});
+      }
+    }
   }
 }
 

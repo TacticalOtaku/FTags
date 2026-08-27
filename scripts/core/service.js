@@ -1,4 +1,4 @@
-import {BULK_CONCURRENCY, MAX_TAG_COUNT, MODULE_ID, SCHEMA_VERSION} from "../constants.js";
+import {BULK_CONCURRENCY, MAX_TAG_COUNT, MODULE_ID, SCHEMA_VERSION, SUPPORTED_DOCUMENT_TYPES} from "../constants.js";
 import {
   TagValidationError,
   createTagId,
