@@ -46,25 +46,40 @@ export const COLLECTION_PROPERTY_BY_DOCUMENT = Object.freeze({
 export const ENTRY_ROW_SELECTOR = [
   ".directory-item.document[data-entry-id]",
   ".directory-item.entry[data-entry-id]",
+  ".directory-item[data-entry-id]",
+  ".directory-item[data-document-id]",
   "[data-entry-id].document",
-  "[data-document-id].document"
+  "[data-document-id].document",
+  "li.directory-item[data-entry-id]",
+  "li.directory-item[data-document-id]",
+  "li.entry[data-entry-id]",
+  "li[data-entry-id]"
 ].join(",");
 
 export const FOLDER_ROW_SELECTOR = [
   ".directory-item.folder[data-folder-id]",
-  "[data-folder-id].folder"
+  "[data-folder-id].folder",
+  "li.folder[data-folder-id]",
+  "li[data-folder-id]"
 ].join(",");
 
 export const DIRECTORY_NAME_SELECTOR = [
   ".folder-header .folder-name",
   ".folder-header .entry-name",
   ".folder-header h3",
+  ".folder-header h4",
   ".entry-name",
-  ".document-name"
+  ".document-name",
+  "h4.entry-name",
+  "a.entry-name"
 ].join(",");
 
 export const DIRECTORY_LIST_SELECTOR = [
   ".directory-list",
   "ol.directory-list",
-  "ul.directory-list"
+  "ul.directory-list",
+  ".compendium-list",
+  "ol.compendium-list",
+  "ul.compendium-list"
 ].join(",");
+

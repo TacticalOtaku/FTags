@@ -63,6 +63,29 @@ export class TagService {
     const targets = this.repository.getAllTaggableObjects().filter((document) => (
       this.repository.getTagIds(document).includes(tagId)
     ));
+
+    for (const pack of this.repository.getCompendiumPacks()) {
+      if (pack.locked) continue;
+      for (const folder of pack.folders ?? []) {
+        if (this.repository.getTagIds(folder).includes(tagId)) {
+          targets.push(folder);
+        }
+      }
+      if (pack.index) {
+        for (const entry of pack.index) {
+          const rawTags = this.repository.getTagIds(entry);
+          if (rawTags.includes(tagId)) {
+            try {
+              const doc = await pack.getDocument(entry._id);
+              if (doc) targets.push(doc);
+            } catch (error) {
+              console.warn(`FTags: Could not load document ${entry._id} from pack ${pack.collection}`, error);
+            }
+          }
+        }
+      }
+    }
+
     const result = await runWithConcurrency(targets, BULK_CONCURRENCY, async (document) => {
       const next = this.repository.getTagIds(document).filter((id) => id !== tagId);
       await this.repository.setTagIds(document, next);
@@ -94,16 +117,32 @@ export class TagService {
 
   async applyTagsToFolderContents(folder, tagIds) {
     this.repository.assertGM();
+    if (folder.pack && game.packs?.get(folder.pack)?.locked) {
+      const error = new Error("locked-compendium");
+      error.code = "locked-compendium";
+      throw error;
+    }
+
     const valid = new Set(this.listTags().map((tag) => tag.id));
     const additions = sanitizeTagIds(tagIds, valid);
     if (!additions.length) return {success: 0, failed: 0, errors: []};
 
-    const targets = this.repository.getFolderDocuments(folder).filter((document) => {
+    let targets = this.repository.getFolderDocuments(folder);
+    if (folder.pack && (!targets.length || !targets[0]?.setFlag)) {
+      const pack = game.packs?.get(folder.pack);
+      if (pack) {
+        const folderIds = new Set([folder.id, ...collectSubfolderIds(folder)]);
+        const entries = (pack.index ?? []).filter((e) => folderIds.has(e.folder));
+        targets = (await Promise.all(entries.map((e) => pack.getDocument(e._id)))).filter(Boolean);
+      }
+    }
+
+    const eligible = targets.filter((document) => {
       const current = new Set(this.repository.getTagIds(document));
       return additions.some((tagId) => !current.has(tagId));
     });
 
-    return runWithConcurrency(targets, BULK_CONCURRENCY, async (document) => {
+    return runWithConcurrency(eligible, BULK_CONCURRENCY, async (document) => {
       const next = sanitizeTagIds([...this.repository.getTagIds(document), ...additions], valid);
       await this.repository.setTagIds(document, next);
     });
@@ -111,21 +150,73 @@ export class TagService {
 
   buildSpotlightIndex() {
     const tagsById = new Map(this.listTags().map((tag) => [tag.id, tag]));
-    const records = this.repository.getAllTaggableObjects().map((document) => {
-      const tags = sanitizeTagIds(this.repository.getTagIds(document), new Set(tagsById.keys()))
+    const validIds = new Set(tagsById.keys());
+    const records = [];
+
+    // World documents and folders
+    for (const document of this.repository.getAllTaggableObjects()) {
+      const tags = sanitizeTagIds(this.repository.getTagIds(document), validIds)
         .map((tagId) => tagsById.get(tagId));
+      if (!tags.length) continue;
       const isFolder = document.documentName === "Folder";
-      return {
+      records.push({
         uuid: document.uuid,
         name: document.name,
         document,
         documentName: document.documentName,
         entityType: isFolder ? document.type : document.documentName,
         isFolder,
+        isCompendium: false,
         path: getDocumentPath(document),
         tags
-      };
-    });
+      });
+    }
+
+    // Compendium packs
+    for (const pack of this.repository.getCompendiumPacks()) {
+      // Folders inside pack
+      for (const folder of pack.folders ?? []) {
+        if (!SUPPORTED_DOCUMENT_TYPES.includes(folder.type)) continue;
+        const tags = sanitizeTagIds(this.repository.getTagIds(folder), validIds)
+          .map((tagId) => tagsById.get(tagId));
+        if (!tags.length) continue;
+        const folderPath = getCompendiumFolderPath(pack, folder.folder?.id ?? folder.folder);
+        records.push({
+          uuid: folder.uuid,
+          name: folder.name,
+          document: folder,
+          documentName: "Folder",
+          entityType: folder.type,
+          isFolder: true,
+          isCompendium: true,
+          path: [pack.title, folderPath].filter(Boolean).join(" / "),
+          tags
+        });
+      }
+
+      // Documents indexed in pack
+      if (pack.index) {
+        for (const entry of pack.index) {
+          const rawTags = this.repository.getTagIds(entry);
+          const tags = sanitizeTagIds(rawTags, validIds).map((tagId) => tagsById.get(tagId));
+          if (!tags.length) continue;
+          const entryFolder = entry.folder ? pack.folders?.get?.(entry.folder) : null;
+          const folderPath = entryFolder ? getCompendiumFolderPath(pack, entryFolder.id) : "";
+          records.push({
+            uuid: entry.uuid ?? (entry._id ? `Compendium.${pack.collection}.${entry._id}` : null),
+            name: entry.name,
+            document: null,
+            documentName: pack.documentName,
+            entityType: pack.documentName,
+            isFolder: false,
+            isCompendium: true,
+            path: [pack.title, folderPath].filter(Boolean).join(" / "),
+            tags
+          });
+        }
+      }
+    }
+
     return buildSpotlightIndex(records);
   }
 
@@ -174,6 +265,29 @@ export class TagService {
     await this.repository.cleanSpotlightFilters?.(new Set(preview.dictionary.tags.map((tag) => tag.id)));
     return preview;
   }
+}
+
+function getCompendiumFolderPath(pack, folderId) {
+  if (!folderId || !pack.folders) return "";
+  const folder = pack.folders.get(folderId);
+  if (!folder) return "";
+  const ancestors = [];
+  let current = folder;
+  const visited = new Set();
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id);
+    ancestors.unshift(current.name);
+    current = current.folder ? pack.folders.get(current.folder.id ?? current.folder) : null;
+  }
+  return ancestors.join(" / ");
+}
+
+function collectSubfolderIds(folder) {
+  const ids = [];
+  for (const child of folder.getSubfolders?.(false) ?? []) {
+    ids.push(child.id, ...collectSubfolderIds(child));
+  }
+  return ids;
 }
 
 function getDocumentPath(document) {

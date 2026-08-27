@@ -238,9 +238,19 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async openRecord(record) {
-    if (!record?.document) return;
+    if (!record) return;
+    let document = record.document;
+    if (!document && record.uuid) {
+      try {
+        document = await fromUuid(record.uuid);
+      } catch (error) {
+        notifyError(error);
+        return;
+      }
+    }
+    if (!document) return;
     await this.close();
-    record.document.sheet?.render(true);
+    document.sheet?.render(true);
   }
 
   /** @this {SpotlightApp} */

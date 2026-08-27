@@ -16,20 +16,36 @@ export function registerDirectoryHooks() {
   Hooks.on("renderDocumentDirectory", (application, element) => {
     void enhanceDirectory(application, element).catch((error) => notifyError(error));
   });
+  Hooks.on("renderCompendium", (application, element) => {
+    void enhanceDirectory(application, element).catch((error) => notifyError(error));
+  });
+  Hooks.on("renderCompendiumDirectory", (application, element) => {
+    void enhanceCompendiumDirectory(application, element).catch((error) => notifyError(error));
+  });
 }
 
 export async function enhanceDirectory(application, element) {
-  if (!game.user?.isGM || !(element instanceof HTMLElement)) return;
-  const documentName = application?.documentName ?? application?.collection?.documentName;
+  const root = asElement(element);
+  if (!game.user?.isGM || !root) return;
+  const documentName = application?.documentName
+    ?? application?.collection?.documentName
+    ?? application?.metadata?.type;
   if (!SUPPORTED_DOCUMENT_TYPES.includes(documentName)) return;
 
   const dictionary = tagRepository.getDictionary();
 
-  element.querySelectorAll(".ftags-row-tags, .ftags-directory-toolbar").forEach((node) => node.remove());
-  element.querySelectorAll(".ftags-filtered-out").forEach((node) => node.classList.remove("ftags-filtered-out"));
-  const rows = collectRows(element, application, documentName);
+  root.querySelectorAll(".ftags-row-tags, .ftags-directory-toolbar").forEach((node) => node.remove());
+  root.querySelectorAll(".ftags-filtered-out").forEach((node) => node.classList.remove("ftags-filtered-out"));
+  const rows = collectRows(root, application, documentName);
   for (const record of rows) injectRowTags(record, dictionary, documentName);
-  injectToolbar(element, application);
+  injectToolbar(root, application);
+}
+
+export async function enhanceCompendiumDirectory(application, element) {
+  const root = asElement(element);
+  if (!game.user?.isGM || !root) return;
+  root.querySelectorAll(".ftags-directory-toolbar").forEach((node) => node.remove());
+  injectToolbar(root, application);
 }
 
 export function renderSupportedDirectories() {
@@ -37,23 +53,31 @@ export function renderSupportedDirectories() {
   for (const documentName of SUPPORTED_DOCUMENT_TYPES) {
     tagRepository.getWorldCollection(documentName)?.render?.(true, {renderContext: "ftags"});
   }
+  for (const pack of tagRepository.getCompendiumPacks()) {
+    pack.apps?.forEach?.((app) => app.render?.(true, {renderContext: "ftags"}));
+  }
 }
 
 function collectRows(root, application, documentName) {
   const records = [];
   const seen = new Set();
+  const collection = application.collection;
+
   for (const row of root.querySelectorAll(ENTRY_ROW_SELECTOR)) {
     if (seen.has(row)) continue;
     const id = row.dataset.entryId ?? row.dataset.documentId;
-    const document = id ? application.collection?.get?.(id) : null;
-    if (!document || document.documentName !== documentName) continue;
+    if (!id) continue;
+    const document = collection?.get?.(id) ?? collection?.index?.get?.(id);
+    if (!document) continue;
     seen.add(row);
     records.push({row, document, isFolder: false});
   }
   for (const row of root.querySelectorAll(FOLDER_ROW_SELECTOR)) {
     if (seen.has(row)) continue;
-    const folder = row.dataset.folderId ? game.folders?.get?.(row.dataset.folderId) : null;
-    if (!folder || folder.type !== documentName) continue;
+    const folderId = row.dataset.folderId;
+    if (!folderId) continue;
+    const folder = collection?.folders?.get?.(folderId) ?? game.folders?.get?.(folderId);
+    if (!folder || (folder.type && folder.type !== documentName)) continue;
     seen.add(row);
     records.push({row, document: folder, isFolder: true});
   }
@@ -149,3 +173,9 @@ function buildColorSegments(tags) {
   });
   return `linear-gradient(to right, ${stops.join(", ")})`;
 }
+
+function asElement(value) {
+  if (value instanceof HTMLElement) return value;
+  return value?.[0] instanceof HTMLElement ? value[0] : null;
+}
+

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0
+
+- Verified compatibility with Foundry VTT 14.367.
+- Added full Compendium support for documents and compendium folders.
+- Registered tag flag field in `CONFIG[documentName].compendiumIndexFields` for automatic compendium indexing.
+- Added GM-only "Manage tags" context menu action in Compendium pack windows.
+- Added circular color indicator dots and search/manager toolbar in Compendium windows and Compendium directory tab.
+- Integrated tagged compendium documents and folders into Spotlight search, including path metadata and direct sheet opening.
+- Added write protection and warning feedback for locked compendium packs.
+- Supported folder tag propagation across compendium folder hierarchies.
+- Synchronized dictionary tag deletion across unlocked compendiums.
+
 ## 1.1.5
 
 - Kept the requested 1.1.5 release number and the previously prepared visuals.

@@ -8,6 +8,20 @@ import {notifyError} from "./ui/notifications.js";
 import {openSpotlight, registerSpotlightKeybinding, SpotlightApp} from "./ui/spotlight.js";
 
 Hooks.once("init", () => {
+  for (const documentName of SUPPORTED_DOCUMENT_TYPES) {
+    const config = CONFIG[documentName];
+    if (config) {
+      const field = `flags.${MODULE_ID}`;
+      if (Array.isArray(config.compendiumIndexFields)) {
+        if (!config.compendiumIndexFields.includes(field)) config.compendiumIndexFields.push(field);
+      } else if (config.compendiumIndexFields instanceof Set) {
+        config.compendiumIndexFields.add(field);
+      } else {
+        config.compendiumIndexFields = [field];
+      }
+    }
+  }
+
   tagRepository.registerSettings({
     managerType: TagManagerApp,
     onDataChange: (reason) => {
@@ -84,6 +98,7 @@ function registerDocumentUpdateHooks() {
   Hooks.on("updateFolder", callback);
   Hooks.on("createFolder", lifecycleCallback);
   Hooks.on("deleteFolder", lifecycleCallback);
+  Hooks.on("updateCompendium", scheduleRefresh);
   for (const documentName of SUPPORTED_DOCUMENT_TYPES) {
     Hooks.on(`update${documentName}`, callback);
     Hooks.on(`create${documentName}`, lifecycleCallback);
