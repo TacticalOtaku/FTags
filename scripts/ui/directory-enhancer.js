@@ -155,9 +155,25 @@ function injectToolbar(root, application) {
   });
   toolbar.append(manageButton);
 
-  const list = root.querySelector(DIRECTORY_LIST_SELECTOR);
-  if (list?.parentElement) list.parentElement.insertBefore(toolbar, list);
+  const anchor = resolveToolbarAnchor(root);
+  if (anchor?.parentElement) anchor.parentElement.insertBefore(toolbar, anchor);
   else root.prepend(toolbar);
+}
+
+/**
+ * Pick the element the toolbar should sit in front of. Compendium windows lay the directory
+ * list out absolutely inside a positioned wrapper, so a sibling toolbar would be painted over
+ * and become unclickable; anchor on the wrapper in that case.
+ */
+function resolveToolbarAnchor(root) {
+  const list = root.querySelector(DIRECTORY_LIST_SELECTOR);
+  if (!list) return null;
+  let anchor = list;
+  while (anchor?.parentElement && anchor.parentElement !== root) {
+    if (globalThis.getComputedStyle?.(anchor)?.position !== "absolute") break;
+    anchor = anchor.parentElement;
+  }
+  return anchor;
 }
 
 function createInteractiveStrip(tag, onClick) {

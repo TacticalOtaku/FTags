@@ -98,7 +98,6 @@ function registerDocumentUpdateHooks() {
   Hooks.on("updateFolder", callback);
   Hooks.on("createFolder", lifecycleCallback);
   Hooks.on("deleteFolder", lifecycleCallback);
-  Hooks.on("updateCompendium", scheduleRefresh);
   for (const documentName of SUPPORTED_DOCUMENT_TYPES) {
     Hooks.on(`update${documentName}`, callback);
     Hooks.on(`create${documentName}`, lifecycleCallback);

@@ -72,25 +72,31 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const tag = tagService.getTag(target.dataset.tagId);
     if (!tag) return;
 
-    const result = await DialogV2.wait({
-      window: {title: game.i18n.format("FTAGS.Manager.Edit", {name: tag.name})},
-      content: editDialogContent(tag),
-      rejectClose: false,
-      modal: true,
-      buttons: [
-        {action: "cancel", label: game.i18n.localize("FTAGS.Common.Cancel")},
-        {
-          action: "save",
-          label: game.i18n.localize("FTAGS.Common.Save"),
-          icon: "fa-solid fa-check",
-          default: true,
-          callback: (_event, button) => ({
-            name: button.form.elements.name.value,
-            color: button.form.elements.color.value
-          })
-        }
-      ]
-    });
+    let result;
+    try {
+      result = await DialogV2.wait({
+        window: {title: game.i18n.format("FTAGS.Manager.Edit", {name: tag.name})},
+        content: editDialogContent(tag),
+        rejectClose: false,
+        modal: true,
+        buttons: [
+          {action: "cancel", label: game.i18n.localize("FTAGS.Common.Cancel")},
+          {
+            action: "save",
+            label: game.i18n.localize("FTAGS.Common.Save"),
+            icon: "fa-solid fa-check",
+            default: true,
+            callback: (_event, button) => ({
+              name: button.form.elements.name.value,
+              color: button.form.elements.color.value
+            })
+          }
+        ]
+      });
+    } catch (error) {
+      notifyError(error);
+      return;
+    }
     if (!result || result === "cancel") return;
 
     try {
@@ -178,6 +184,9 @@ export function openTagManager(parentApp = null) {
 }
 
 function editDialogContent(tag) {
+  // DialogV2 rejects a content element that carries any attribute and only keeps its
+  // innerHTML, so the outer div stays bare and the styling hook lives one level down.
+  const root = document.createElement("div");
   const wrapper = document.createElement("div");
   wrapper.className = "ftags-manager ftags-manager__edit";
 
@@ -188,7 +197,8 @@ function editDialogContent(tag) {
   nameInput.name = "name";
   nameInput.type = "text";
   nameInput.maxLength = MAX_TAG_NAME_LENGTH;
-  nameInput.value = tag.name;
+  // The element is serialized to innerHTML, so the value has to live in the attribute.
+  nameInput.setAttribute("value", tag.name);
   nameLabel.append(nameText, nameInput);
 
   const colorLabel = document.createElement("label");
@@ -197,11 +207,12 @@ function editDialogContent(tag) {
   const colorInput = document.createElement("input");
   colorInput.name = "color";
   colorInput.type = "color";
-  colorInput.value = tag.color;
+  colorInput.setAttribute("value", tag.color);
   colorLabel.append(colorText, colorInput);
 
   wrapper.append(nameLabel, colorLabel);
-  return wrapper;
+  root.append(wrapper);
+  return root;
 }
 
 function downloadJson(json, filename) {
