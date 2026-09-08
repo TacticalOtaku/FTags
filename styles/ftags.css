@@ -164,7 +164,7 @@ button.ftags-tag-strip:focus-visible {
 
 .ftags-manager__create {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto auto;
+  grid-template-columns: minmax(140px, 1fr) 44px 112px;
   align-items: end;
   gap: 8px;
 }
@@ -181,6 +181,25 @@ button.ftags-tag-strip:focus-visible {
   min-height: 32px;
   padding: 2px;
 }
+
+.ftags-manager__create > button { grid-column: 1 / -1; }
+.ftags-manager__presets summary, .ftags-spotlight__automatic summary { cursor: pointer; }
+.ftags-manager__presets[open] { display: grid; gap: 6px; }
+.ftags-manager__presets button { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; text-align: start; }
+.ftags-manager__presets small { font-size: 0.7rem; opacity: 0.8; }
+.ftags-spotlight__query-hint { margin: 4px 0 0; font-size: 0.7rem; opacity: 0.8; }
+.ftags-spotlight__automatic { margin-block-start: 8px; min-width: 0; }
+.ftags-spotlight__automatic .hint { font-size: 0.7rem; margin-block: 5px; }
+.ftags-spotlight__tag-filter.ftags-spotlight__tag-filter--auto { grid-template-columns: minmax(0, 1fr) 86px; }
+.ftags-chip__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ftags-chip__shape { display: inline-block; width: 6px; height: 6px; flex: 0 0 6px; margin-inline-end: 4px; background: currentColor; }
+
+/* Shapes stay within the original marker box, including stars and diamonds. */
+[data-ftags-shape="circle"] { border-radius: 50% !important; }
+[data-ftags-shape="square"] { border-radius: 0 !important; }
+[data-ftags-shape="diamond"] { border-radius: 0 !important; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+[data-ftags-shape="triangle"] { border-radius: 0 !important; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+[data-ftags-shape="star"] { border-radius: 0 !important; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 94%, 50% 72%, 21% 94%, 32% 57%, 2% 35%, 39% 35%); }
 
 .ftags-manager__list,
 .ftags-assignment__list {

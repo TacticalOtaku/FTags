@@ -1,6 +1,7 @@
 export const MODULE_ID = "ftags";
 export const MODULE_TITLE = "FTags";
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+export const TAG_SHAPES = Object.freeze(["circle", "square", "diamond", "star", "triangle"]);
 export const MAX_VISIBLE_TAGS = 3;
 export const MAX_TAG_NAME_LENGTH = 48;
 export const MAX_TAG_COUNT = 500;
@@ -94,4 +95,3 @@ export const DIRECTORY_LIST_SELECTOR = [
   "ol.compendium-list",
   "ul.compendium-list"
 ].join(",");
-

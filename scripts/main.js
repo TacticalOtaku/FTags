@@ -6,18 +6,20 @@ import {TagAssignmentApp} from "./ui/tag-assignment.js";
 import {openTagManager, TagManagerApp} from "./ui/tag-manager.js";
 import {notifyError} from "./ui/notifications.js";
 import {openSpotlight, registerSpotlightKeybinding, SpotlightApp} from "./ui/spotlight.js";
+import {getAutomaticIndexFields} from "./core/automatic-tags.js";
 
 Hooks.once("init", () => {
   for (const documentName of SUPPORTED_DOCUMENT_TYPES) {
     const config = CONFIG[documentName];
     if (config) {
-      const field = `flags.${MODULE_ID}`;
-      if (Array.isArray(config.compendiumIndexFields)) {
-        if (!config.compendiumIndexFields.includes(field)) config.compendiumIndexFields.push(field);
-      } else if (config.compendiumIndexFields instanceof Set) {
-        config.compendiumIndexFields.add(field);
-      } else {
-        config.compendiumIndexFields = [field];
+      for (const field of [`flags.${MODULE_ID}`, ...getAutomaticIndexFields(documentName)]) {
+        if (Array.isArray(config.compendiumIndexFields)) {
+          if (!config.compendiumIndexFields.includes(field)) config.compendiumIndexFields.push(field);
+        } else if (config.compendiumIndexFields instanceof Set) {
+          config.compendiumIndexFields.add(field);
+        } else {
+          config.compendiumIndexFields = [field];
+        }
       }
     }
   }
@@ -48,7 +50,7 @@ Hooks.once("init", () => {
 Hooks.once("ready", async () => {
   if (!game.user?.isGM) return;
   try {
-    const valid = new Set(tagService.listTags().map((tag) => tag.id));
+    const valid = new Set(tagService.listSearchTags().map((tag) => tag.id));
     await tagRepository.cleanSpotlightFilters(valid);
     scheduleRefresh();
   } catch (error) {
@@ -79,6 +81,7 @@ function refreshOpenApps() {
 }
 
 function refreshOpenSpotlights() {
+  if (!game.user?.isGM) return;
   for (const app of SpotlightApp.instances()) {
     if (!app.rendered) continue;
     app.markDirty();
@@ -92,9 +95,13 @@ function registerDocumentUpdateHooks() {
     else if (
       foundry.utils.hasProperty(changes, "name")
       || foundry.utils.hasProperty(changes, "folder")
+      || Object.keys(changes ?? {}).some(key => key === "type" || key === "system" || key.startsWith("system."))
     ) refreshOpenSpotlights();
   };
   const lifecycleCallback = () => refreshOpenSpotlights();
+  Hooks.on("updateCompendium", lifecycleCallback);
+  Hooks.on("createCompendium", lifecycleCallback);
+  Hooks.on("deleteCompendium", lifecycleCallback);
   Hooks.on("updateFolder", callback);
   Hooks.on("createFolder", lifecycleCallback);
   Hooks.on("deleteFolder", lifecycleCallback);

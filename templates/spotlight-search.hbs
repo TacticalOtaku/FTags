@@ -24,6 +24,7 @@
       <span class="ftags-spotlight__filter-count" data-ftags-filter-count {{#unless hasActiveFilters}}hidden{{/unless}}>{{filterCount}}</span>
     </button>
   </div>
+  {{#if hasAutomaticTags}}<p class="ftags-spotlight__query-hint">{{localize "FTAGS.Spotlight.AutoHint"}}</p>{{/if}}
 
   <section
     id="ftags-spotlight-filters"
@@ -52,7 +53,7 @@
         <div class="ftags-spotlight__tag-filters">
           {{#each filterTags}}
             <label class="ftags-spotlight__tag-filter">
-              <span class="ftags-color-swatch" style="--ftags-tag-color: {{color}};"></span>
+              <span class="ftags-color-swatch" data-ftags-shape="{{shape}}" style="--ftags-tag-color: {{color}};"></span>
               <span class="ftags-spotlight__tag-filter-name" title="{{name}}">{{name}}</span>
               <select data-ftags-tag-filter data-tag-id="{{id}}" aria-label="{{name}}">
                 <option value="ignore" {{#if ignored}}selected{{/if}}>{{localize "FTAGS.Spotlight.TagState.Ignore"}}</option>
@@ -64,6 +65,24 @@
         </div>
       {{else}}
         <p class="hint">{{localize "FTAGS.Spotlight.NoFilterTags"}}</p>
+      {{/if}}
+      {{#if hasAutomaticTags}}
+        <details class="ftags-spotlight__automatic" {{#if automaticFiltersActive}}open{{/if}}>
+          <summary>{{localize "FTAGS.Spotlight.Automatic"}}</summary>
+          <p class="hint">{{localize "FTAGS.Spotlight.AutomaticHint"}}</p>
+          <div class="ftags-spotlight__tag-filters">
+            {{#each automaticFilterTags}}
+              <label class="ftags-spotlight__tag-filter ftags-spotlight__tag-filter--auto">
+                <span class="ftags-spotlight__tag-filter-name" title="{{name}}">{{name}}</span>
+                <select data-ftags-tag-filter data-tag-id="{{id}}" aria-label="{{name}}">
+                  <option value="ignore" {{#if ignored}}selected{{/if}}>{{localize "FTAGS.Spotlight.TagState.Ignore"}}</option>
+                  <option value="include" {{#if included}}selected{{/if}}>{{localize "FTAGS.Spotlight.TagState.Include"}}</option>
+                  <option value="exclude" {{#if excluded}}selected{{/if}}>{{localize "FTAGS.Spotlight.TagState.Exclude"}}</option>
+                </select>
+              </label>
+            {{/each}}
+          </div>
+        </details>
       {{/if}}
     </div>
 

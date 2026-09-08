@@ -20,6 +20,8 @@ import {
   validateTagDraft
 } from "./model.js";
 import {buildSpotlightIndex, searchSpotlightIndex} from "./search.js";
+import {getAutomaticTags, getAutomaticTagLibrary} from "./automatic-tags.js";
+import {getPresetTags} from "./presets.js";
 
 export class TagService {
   constructor(repository) {
@@ -30,29 +32,49 @@ export class TagService {
     return this.repository.getDictionary().tags;
   }
 
+  listSearchTags() {
+    return [...this.listTags(), ...getAutomaticTagLibrary()];
+  }
+
+  async applyPreset(id) {
+    this.repository.assertGM();
+    const dictionary = this.repository.getDictionary();
+    let created = 0;
+    for (const {aliases, ...tag} of getPresetTags(id)) {
+      if (dictionary.tags.some(existing => existing.id === tag.id || aliases.some(name => (
+        existing.name.localeCompare(name, undefined, {sensitivity: "base"}) === 0
+      )))) continue;
+      dictionary.tags.push(validateTagDraft(tag, dictionary.tags));
+      created++;
+    }
+    if (dictionary.tags.length > MAX_TAG_COUNT) throw new TagValidationError("too-many-tags", {max: MAX_TAG_COUNT});
+    if (created) await this.repository.setDictionary(dictionary);
+    return {created};
+  }
+
   getTag(tagId) {
     return this.listTags().find((tag) => tag.id === tagId) ?? null;
   }
 
-  async createTag({name, color}) {
+  async createTag({name, color, shape}) {
     this.repository.assertGM();
     const dictionary = this.repository.getDictionary();
     if (dictionary.tags.length >= MAX_TAG_COUNT) {
       throw new TagValidationError("too-many-tags", {max: MAX_TAG_COUNT});
     }
-    const tag = validateTagDraft({id: createTagId(), name, color}, dictionary.tags);
+    const tag = validateTagDraft({id: createTagId(), name, color, shape}, dictionary.tags);
     dictionary.tags = sortTags([...dictionary.tags, tag]);
     await this.repository.setDictionary(dictionary);
     return tag;
   }
 
-  async updateTag(tagId, {name, color}) {
+  async updateTag(tagId, {name, color, shape}) {
     this.repository.assertGM();
     const dictionary = this.repository.getDictionary();
     const index = dictionary.tags.findIndex((tag) => tag.id === tagId);
     if (index < 0) throw new Error("Unknown FTags tag");
     const updated = validateTagDraft(
-      {id: tagId, name: normalizeTagName(name), color: normalizeTagColor(color)},
+      {id: tagId, name: normalizeTagName(name), color: normalizeTagColor(color), shape: shape ?? dictionary.tags[index].shape},
       dictionary.tags,
       tagId
     );
@@ -102,7 +124,7 @@ export class TagService {
 
     dictionary.tags = dictionary.tags.filter((candidate) => candidate.id !== tagId);
     await this.repository.setDictionary(dictionary);
-    await this.repository.cleanSpotlightFilters?.(new Set(dictionary.tags.map((candidate) => candidate.id)));
+    await this.repository.cleanSpotlightFilters?.(new Set(this.listSearchTags().map((candidate) => candidate.id)));
     return {tag, deleted: true, cleaned: result.success, failed: 0, errors: []};
   }
 
@@ -164,7 +186,7 @@ export class TagService {
     // World documents and folders
     for (const document of this.repository.getAllTaggableObjects()) {
       const tags = sanitizeTagIds(this.repository.getTagIds(document), validIds)
-        .map((tagId) => tagsById.get(tagId));
+        .map((tagId) => tagsById.get(tagId)).concat(getAutomaticTags(document));
       if (!tags.length) continue;
       const isFolder = document.documentName === "Folder";
       records.push({
@@ -208,7 +230,8 @@ export class TagService {
       if (pack.index) {
         for (const entry of pack.index) {
           const rawTags = this.repository.getTagIds(entry);
-          const tags = sanitizeTagIds(rawTags, validIds).map((tagId) => tagsById.get(tagId));
+          const tags = sanitizeTagIds(rawTags, validIds).map((tagId) => tagsById.get(tagId))
+            .concat(getAutomaticTags(entry, {documentName: pack.documentName}));
           if (!tags.length) continue;
           const entryFolder = entry.folder ? pack.folders?.get?.(entry.folder) : null;
           const folderPath = entryFolder ? getCompendiumFolderPath(pack, entryFolder.id) : "";
@@ -236,7 +259,7 @@ export class TagService {
   }
 
   async getSpotlightFilters() {
-    const valid = new Set(this.listTags().map((tag) => tag.id));
+    const valid = new Set(this.listSearchTags().map((tag) => tag.id));
     const current = this.repository.getSpotlightFilterState();
     const cleaned = normalizeSpotlightFilterState(current, valid);
     if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
@@ -247,7 +270,7 @@ export class TagService {
 
   async setSpotlightFilters(state) {
     this.repository.assertGM();
-    const valid = new Set(this.listTags().map((tag) => tag.id));
+    const valid = new Set(this.listSearchTags().map((tag) => tag.id));
     const cleaned = normalizeSpotlightFilterState(state, valid);
     await this.repository.setSpotlightFilterState(cleaned);
     return cleaned;
@@ -273,7 +296,7 @@ export class TagService {
     this.repository.assertGM();
     const preview = this.previewImport(raw);
     await this.repository.setDictionary(preview.dictionary);
-    await this.repository.cleanSpotlightFilters?.(new Set(preview.dictionary.tags.map((tag) => tag.id)));
+    await this.repository.cleanSpotlightFilters?.(new Set(this.listSearchTags().map((tag) => tag.id)));
     return preview;
   }
 }

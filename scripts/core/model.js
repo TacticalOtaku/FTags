@@ -3,7 +3,8 @@ import {
   MAX_TAG_NAME_LENGTH,
   MAX_VISIBLE_TAGS,
   SCHEMA_VERSION,
-  SPOTLIGHT_DOCUMENT_TYPES
+  SPOTLIGHT_DOCUMENT_TYPES,
+  TAG_SHAPES
 } from "../constants.js";
 
 const TAG_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -35,7 +36,7 @@ export function normalizeTagColor(value) {
 
 export function normalizeTagId(value) {
   const id = String(value ?? "").trim();
-  if (!TAG_ID_PATTERN.test(id)) throw new TagValidationError("invalid-id");
+  if (!TAG_ID_PATTERN.test(id) || id.startsWith("auto-dnd5e-")) throw new TagValidationError("invalid-id");
   return id;
 }
 
@@ -49,8 +50,14 @@ export function normalizeTag(raw, {requireId = true} = {}) {
   return {
     id: requireId ? normalizeTagId(raw?.id) : normalizeTagId(raw?.id || createTagId()),
     name: normalizeTagName(raw?.name),
-    color: normalizeTagColor(raw?.color)
+    color: normalizeTagColor(raw?.color),
+    shape: normalizeTagShape(raw?.shape)
   };
+}
+
+export function normalizeTagShape(value = "circle") {
+  if (!TAG_SHAPES.includes(value)) throw new TagValidationError("invalid-shape");
+  return value;
 }
 
 export function emptyDictionary() {
@@ -86,7 +93,7 @@ export function validateDictionaryPayload(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new TagValidationError("invalid-payload");
   }
-  if (raw.schemaVersion !== SCHEMA_VERSION) {
+  if (![1, SCHEMA_VERSION].includes(raw.schemaVersion)) {
     throw new TagValidationError("unsupported-schema", {
       expected: SCHEMA_VERSION,
       actual: raw.schemaVersion
@@ -130,7 +137,7 @@ export function mergeDictionaries(currentRaw, importedRaw) {
 
     const previous = byId.get(tag.id);
     if (!previous) summary.created += 1;
-    else if (previous.name === tag.name && previous.color === tag.color) summary.unchanged += 1;
+    else if (previous.name === tag.name && previous.color === tag.color && previous.shape === tag.shape) summary.unchanged += 1;
     else summary.updated += 1;
 
     if (previous) currentNameOwners.delete(previous.name.toLocaleLowerCase());

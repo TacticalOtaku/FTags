@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.0
+
+### Added
+
+- Computed D&D5e search tags for creature type, NPC CR, item type, rarity and melee/ranged weapons. Automatic tags work without manual assignments, remain hidden from directory markers, assignment dialogs and result chips, and have their own expandable filter list.
+- Russian/English search aliases, quoted tag phrases and exact CR predicates with fractions and comparisons.
+- Circle, square, diamond, star and triangle manual markers, preserving the existing 6px directory size and three-marker overflow behavior.
+- Preparation, Story and Relationships presets with duplicate-safe application and editable colors/shapes.
+- Schema 2 dictionary export with shapes; schema 1 import remains supported with circle defaults.
+- Behavioral tests, template/localization validation and an isolated browser UI harness.
+
+### Changed
+
+- Spotlight reads selected compendium index fields, including locked packs, with bounded concurrency and partial-failure warnings. System-property and compendium changes invalidate open search indexes.
+- Search refresh callbacks check GM access.
+
 ## 1.2.6
 
 ### Fixed
