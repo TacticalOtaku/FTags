@@ -143,6 +143,13 @@ export class TagRepository {
 
   getFolderDocuments(folder) {
     if (!folder || folder.documentName !== "Folder" || !SUPPORTED_DOCUMENT_TYPES.includes(folder.type)) return [];
+    if (folder.pack) {
+      // Compendium folders yield index entries, which carry no `documentName` of their own;
+      // the owning pack decides whether they are taggable.
+      const pack = game.packs?.get(folder.pack);
+      if (!pack || !SUPPORTED_DOCUMENT_TYPES.includes(pack.documentName)) return [];
+      return collectFolderDocuments(folder);
+    }
     return collectFolderDocuments(folder).filter((document) => this.isTaggable(document));
   }
 

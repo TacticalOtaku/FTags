@@ -1,21 +1,10 @@
-import {MODULE_ID, SPOTLIGHT_DOCUMENT_TYPES} from "../constants.js";
-import {countSpotlightFilters, defaultSpotlightFilterState} from "../core/model.js";
+import {MODULE_ID, SPOTLIGHT_DOCUMENT_TYPES, TYPE_LOCALIZATION_KEYS} from "../constants.js";
+import {chipColors, countSpotlightFilters, defaultSpotlightFilterState} from "../core/model.js";
 import {tagService} from "../runtime.js";
 import {notifyError} from "./notifications.js";
 
 const {ApplicationV2, HandlebarsApplicationMixin} = foundry.applications.api;
 const RESULT_LIMIT = 100;
-const TYPE_LOCALIZATION_KEYS = Object.freeze({
-  Actor: "FTAGS.Types.Actor",
-  Item: "FTAGS.Types.Item",
-  Scene: "FTAGS.Types.Scene",
-  JournalEntry: "FTAGS.Types.JournalEntry",
-  RollTable: "FTAGS.Types.RollTable",
-  Cards: "FTAGS.Types.Cards",
-  Playlist: "FTAGS.Types.Playlist",
-  Macro: "FTAGS.Types.Macro",
-  Folder: "FTAGS.Types.Folder"
-});
 
 export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
@@ -81,6 +70,7 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
       results: this.results.map((record, index) => prepareResult(record, index === this.selectedIndex, index)),
       hasIndex: Boolean(this.index.length),
       hasResults: Boolean(resultCount),
+      hasNoTypes: !this.filters.documentTypes.length,
       resultCount,
       resultCountLabel: game.i18n.format("FTAGS.Spotlight.ResultCount", {count: resultCount})
     };
@@ -131,6 +121,21 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
       });
     }
     this.#syncSelection();
+    this.keepInViewport();
+  }
+
+  /**
+   * The window is centred while it is still short and then grows downwards as filters open or
+   * results arrive, so nudge it back up whenever it would run past the bottom of the screen.
+   */
+  keepInViewport() {
+    const element = this.element;
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    if (!rect.height) return;
+    const overflow = Math.round(rect.bottom - window.innerHeight + 8);
+    if (overflow <= 0) return;
+    this.setPosition({top: Math.max(8, Math.round(rect.top - overflow))});
   }
 
   async _preClose(options) {
@@ -265,6 +270,7 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
     target.setAttribute("aria-expanded", String(this.filtersOpen));
     const panel = this.parts.search?.querySelector("[data-ftags-filter-panel]");
     if (panel) panel.hidden = !this.filtersOpen;
+    this.keepInViewport();
   }
 
   /** @this {SpotlightApp} */
@@ -282,7 +288,7 @@ export function registerSpotlightKeybinding() {
   game.keybindings.register(MODULE_ID, "openSpotlight", {
     name: "FTAGS.Keybindings.SpotlightName",
     hint: "FTAGS.Keybindings.SpotlightHint",
-    editable: [],
+    editable: [{key: "KeyF", modifiers: ["Control", "Shift"]}],
     restricted: true,
     onDown: () => {
       if (!game.user?.isGM) return false;
@@ -294,7 +300,10 @@ export function registerSpotlightKeybinding() {
 
 export function openSpotlight(options = {}) {
   if (!game.user?.isGM) return null;
-  if (!activeSpotlight?.rendered) activeSpotlight = new SpotlightApp();
+  // A cached instance whose element left the DOM would never render again, so replace it.
+  if (!activeSpotlight?.rendered || !activeSpotlight.element?.isConnected) {
+    activeSpotlight = new SpotlightApp();
+  }
   void activeSpotlight.activate(options).catch((error) => notifyError(error));
   return activeSpotlight;
 }
@@ -360,7 +369,7 @@ function prepareResult(record, selected, index) {
       metadata,
       tags: record.tags.map((tag) => tag.name).join(", ")
     }),
-    tags: record.tags
+    tags: record.tags.map((tag) => ({...tag, ...chipColors(tag.color)}))
   };
 }
 

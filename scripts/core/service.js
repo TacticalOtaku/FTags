@@ -1,6 +1,14 @@
-import {BULK_CONCURRENCY, MAX_TAG_COUNT, MODULE_ID, SCHEMA_VERSION, SUPPORTED_DOCUMENT_TYPES} from "../constants.js";
+import {
+  BULK_CONCURRENCY,
+  MAX_TAG_COUNT,
+  MODULE_ID,
+  SCHEMA_VERSION,
+  SUPPORTED_DOCUMENT_TYPES,
+  TYPE_LOCALIZATION_KEYS
+} from "../constants.js";
 import {
   TagValidationError,
+  collectSubfolderIds,
   createTagId,
   mergeDictionaries,
   normalizeSpotlightFilterState,
@@ -164,6 +172,7 @@ export class TagService {
         name: document.name,
         document,
         documentName: document.documentName,
+        typeLabel: localizeType(document.documentName),
         entityType: isFolder ? document.type : document.documentName,
         isFolder,
         isCompendium: false,
@@ -186,6 +195,7 @@ export class TagService {
           name: folder.name,
           document: folder,
           documentName: "Folder",
+          typeLabel: localizeType("Folder"),
           entityType: folder.type,
           isFolder: true,
           isCompendium: true,
@@ -207,6 +217,7 @@ export class TagService {
             name: entry.name,
             document: null,
             documentName: pack.documentName,
+            typeLabel: localizeType(pack.documentName),
             entityType: pack.documentName,
             isFolder: false,
             isCompendium: true,
@@ -282,12 +293,9 @@ function getCompendiumFolderPath(pack, folderId) {
   return ancestors.join(" / ");
 }
 
-function collectSubfolderIds(folder) {
-  const ids = [];
-  for (const child of folder.getSubfolders?.(false) ?? []) {
-    ids.push(child.id, ...collectSubfolderIds(child));
-  }
-  return ids;
+function localizeType(documentName) {
+  const key = TYPE_LOCALIZATION_KEYS[documentName];
+  return key ? game.i18n.localize(key) : String(documentName ?? "");
 }
 
 function getDocumentPath(document) {

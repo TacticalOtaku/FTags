@@ -178,14 +178,64 @@ export function partitionVisibleTags(assignedIds, dictionaryRaw, limit = MAX_VIS
   };
 }
 
-export function contrastTextColor(hex) {
+const CHIP_SURFACE = [36, 41, 54];
+// Must match the tag share used by the Spotlight chip rule in ftags.css.
+const CHIP_TAG_SHARE = 0.84;
+
+function hexChannels(hex) {
   const color = normalizeTagColor(hex).slice(1);
-  const channels = [0, 2, 4].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16) / 255);
-  const linear = channels.map((channel) => (
-    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  return [0, 2, 4].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+}
+
+function relativeLuminance(channels) {
+  const linear = channels.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function toHex(channels) {
+  return `#${channels.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+}
+
+export function contrastTextColor(hex) {
+  return relativeLuminance(hexChannels(hex)) > 0.179 ? "#111111" : "#FFFFFF";
+}
+
+/**
+ * Resolve the chip background and a foreground that stays readable on it. The background is
+ * computed here rather than through CSS `color-mix` so the contrast decision is made against
+ * the colour actually painted.
+ */
+export function chipColors(hex) {
+  const tag = hexChannels(hex);
+  const background = tag.map((value, index) => (
+    value * CHIP_TAG_SHARE + CHIP_SURFACE[index] * (1 - CHIP_TAG_SHARE)
   ));
-  const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
-  return luminance > 0.179 ? "#111111" : "#FFFFFF";
+  return {
+    background: toHex(background),
+    foreground: relativeLuminance(background) > 0.179 ? "#111111" : "#F7F3E8",
+    border: toHex(tag.map((value) => value * 0.68))
+  };
+}
+
+/** Subfolders of a folder. Compendium folders return nothing from `getSubfolders`, so fall back to `children`. */
+export function getChildFolders(folder) {
+  const direct = folder?.getSubfolders?.(false);
+  if (Array.isArray(direct) && direct.length) return direct;
+  return (folder?.children ?? [])
+    .map((child) => child?.folder ?? child)
+    .filter((child) => child?.documentName === "Folder");
+}
+
+export function collectSubfolderIds(folder) {
+  const ids = [];
+  for (const child of getChildFolders(folder)) {
+    if (!child?.id) continue;
+    ids.push(child.id, ...collectSubfolderIds(child));
+  }
+  return ids;
 }
 
 export function collectFolderDocuments(folder) {
@@ -197,11 +247,13 @@ export function collectFolderDocuments(folder) {
     if (!current || visitedFolders.has(current.id)) return;
     visitedFolders.add(current.id);
     for (const document of current.contents ?? []) {
-      if (!document?.id || visitedDocuments.has(document.uuid ?? document.id)) continue;
-      visitedDocuments.add(document.uuid ?? document.id);
+      // Compendium folders expose plain index entries keyed by `_id` instead of documents.
+      const id = document?.id ?? document?._id;
+      if (!id || visitedDocuments.has(document.uuid ?? id)) continue;
+      visitedDocuments.add(document.uuid ?? id);
       documents.push(document);
     }
-    for (const child of current.getSubfolders?.(false) ?? []) visit(child);
+    for (const child of getChildFolders(current)) visit(child);
   };
 
   visit(folder);

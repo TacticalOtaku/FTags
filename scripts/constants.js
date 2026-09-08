@@ -32,6 +32,18 @@ export const SPOTLIGHT_DOCUMENT_TYPES = Object.freeze([
   "Folder"
 ]);
 
+export const TYPE_LOCALIZATION_KEYS = Object.freeze({
+  Actor: "FTAGS.Types.Actor",
+  Item: "FTAGS.Types.Item",
+  Scene: "FTAGS.Types.Scene",
+  JournalEntry: "FTAGS.Types.JournalEntry",
+  RollTable: "FTAGS.Types.RollTable",
+  Cards: "FTAGS.Types.Cards",
+  Playlist: "FTAGS.Types.Playlist",
+  Macro: "FTAGS.Types.Macro",
+  Folder: "FTAGS.Types.Folder"
+});
+
 export const COLLECTION_PROPERTY_BY_DOCUMENT = Object.freeze({
   Actor: "actors",
   Item: "items",

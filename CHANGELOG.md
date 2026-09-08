@@ -1,6 +1,43 @@
 # Changelog
 
-## 1.2.0
+## 1.2.6
+
+### Fixed
+
+- Tag editing no longer fails silently. Foundry v14 `DialogV2` rejects a content element that
+  carries any attribute, so the edit dialog now passes a bare wrapper, and dialog failures are
+  reported instead of being swallowed.
+- The "Manage tags" context action now appears for every compendium entry rather than only those
+  already loaded into memory. Visibility is resolved through the pack index and the document is
+  fetched on demand when the action runs.
+- Folder tag propagation now works for compendium folders. Index entries are counted correctly, so
+  the propagation checkbox is no longer permanently disabled, and nested subfolders are included
+  because subfolder traversal falls back to `children` when `getSubfolders` returns nothing.
+- The directory toolbar in compendium windows is no longer painted over by the absolutely
+  positioned document list, restoring both its visibility and its click targets.
+- Spotlight result tags compute background and foreground together, restoring readable contrast on
+  light tag colours; white, yellow, and other bright tags previously rendered near-invisible text.
+- The Spotlight window stays inside the viewport, so the footer and the end of the result list
+  remain reachable while the filter panel is open.
+
+### Changed
+
+- Sorting Spotlight results by object type follows localized labels instead of internal document
+  names.
+- Clearing every object type shows a dedicated hint rather than the generic "no results" message.
+- `Ctrl+Shift+F` ships as the default Spotlight keybinding and stays editable.
+- The tag manager introduction states that tags are hidden from the player interface but are not a
+  security boundary, since world settings remain readable by a player client.
+- `Spotlight` replaces a cached window instance whose element has left the DOM.
+
+### Removed
+
+- The `getCompendiumEntryContext` handler and the `updateCompendium` subscription; neither hook
+  exists in Foundry v14.
+
+## 1.2.5
+
+Previously published under the number 1.2.0; renumbered so the history stays monotonic.
 
 - Verified compatibility with Foundry VTT 14.367.
 - Added full Compendium support for documents and compendium folders.
@@ -11,15 +48,6 @@
 - Added write protection and warning feedback for locked compendium packs.
 - Supported folder tag propagation across compendium folder hierarchies.
 - Synchronized dictionary tag deletion across unlocked compendiums.
-
-## 1.1.5
-
-- Kept the requested 1.1.5 release number and the previously prepared visuals.
-- Enforced the 500-tag dictionary capacity consistently for creation, import, and merged imports.
-- Centralized the 48-character tag-name limit across validation and manager inputs.
-- Corrected current documentation to describe circular directory markers.
-- Removed the obsolete per-directory `savedFilters` subsystem; filtering and persistence now belong exclusively to Spotlight.
-- Added a dependency-free Foundry UI behavior harness for directories, popouts, GM/player visibility, context actions, assignment, manager creation, Spotlight opening, and close/debounce lifecycle.
 
 ## 1.2.4
 
@@ -50,6 +78,15 @@
 - Added per-tag include/exclude states, ANY/ALL matching, object-type filters, sorting, reset, and per-GM persistence.
 - Clicking a directory tag now opens Spotlight with that tag included instead of hiding directory rows.
 - Reduced directory and Spotlight result tags to a Plutonium-friendly 14 px, with 9 px start-aligned text and denser spacing.
+
+## 1.1.5
+
+- Kept the requested 1.1.5 release number and the previously prepared visuals.
+- Enforced the 500-tag dictionary capacity consistently for creation, import, and merged imports.
+- Centralized the 48-character tag-name limit across validation and manager inputs.
+- Corrected current documentation to describe circular directory markers.
+- Removed the obsolete per-directory `savedFilters` subsystem; filtering and persistence now belong exclusively to Spotlight.
+- Added a dependency-free Foundry UI behavior harness for directories, popouts, GM/player visibility, context actions, assignment, manager creation, Spotlight opening, and close/debounce lifecycle.
 
 ## 1.1.1
 

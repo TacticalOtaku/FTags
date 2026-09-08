@@ -78,7 +78,12 @@ function compareMatches(left, right, sortBy) {
   return left.score - right.score || byName || byType || left.search.order - right.search.order;
 }
 
+/**
+ * Sorting by object type follows the label the GM actually sees, so a localized UI does not
+ * end up ordered by internal document names.
+ */
 function getResultType(record) {
+  if (record?.typeLabel) return String(record.typeLabel);
   return String(record?.documentName ?? (record?.isFolder ? "Folder" : record?.entityType) ?? "");
 }
 
