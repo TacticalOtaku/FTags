@@ -13,7 +13,7 @@
       {{#each tags}}
         <label class="ftags-assignment__option">
           <input type="checkbox" name="tagIds" value="{{id}}" {{checked assigned}} {{#if ../isLocked}}disabled{{/if}}>
-          <span class="ftags-color-swatch" style="--ftags-tag-color: {{color}};"></span>
+          <span class="ftags-color-swatch" data-ftags-shape="{{shape}}" style="--ftags-tag-color: {{color}};"></span>
           <span class="ftags-assignment__name">{{name}}</span>
         </label>
       {{/each}}

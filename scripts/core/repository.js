@@ -13,8 +13,36 @@ import {
   normalizeSpotlightFilterState,
   sanitizeTagIds
 } from "./model.js";
+import {getAutomaticIndexFields} from "./automatic-tags.js";
 
 export class TagRepository {
+  async prepareCompendiumIndexes() {
+    this.assertGM();
+    // Share an in-flight read between simultaneous Spotlight renders.
+    if (this.indexPreparation) return this.indexPreparation;
+    this.indexPreparation = this.#loadCompendiumIndexes();
+    try { return await this.indexPreparation; }
+    finally { this.indexPreparation = null; }
+  }
+
+  async #loadCompendiumIndexes() {
+    const queue = this.getCompendiumPacks();
+    const failures = [];
+    const workers = Array.from({length: Math.min(4, queue.length)}, async () => {
+      while (queue.length) {
+        const pack = queue.shift();
+        try {
+          await pack.getIndex({fields: [`flags.${MODULE_ID}`, "folder", ...getAutomaticIndexFields(pack.documentName)]});
+        } catch (error) {
+          failures.push(pack.title ?? pack.collection);
+          console.warn(`FTags: Could not index ${pack.collection}`, error);
+        }
+      }
+    });
+    await Promise.all(workers);
+    return failures;
+  }
+
   registerSettings({managerType, onDataChange} = {}) {
     game.settings.register(MODULE_ID, SETTINGS.DICTIONARY, {
       name: "FTAGS.Settings.DictionaryName",

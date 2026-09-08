@@ -10,17 +10,31 @@
       <span>{{localize "FTAGS.Manager.Color"}}</span>
       <input type="color" name="newColor" value="#6F8FAF">
     </label>
+    <label>
+      <span>{{localize "FTAGS.Manager.Shape"}}</span>
+      <select name="newShape">{{#each shapes}}<option value="{{value}}">{{label}}</option>{{/each}}</select>
+    </label>
     <button type="button" class="bright" data-action="create">
       <i class="fa-solid fa-plus" aria-hidden="true"></i>
       {{localize "FTAGS.Manager.Create"}}
     </button>
   </div>
 
+  <details class="ftags-manager__presets">
+    <summary>{{localize "FTAGS.Presets.Title"}}</summary>
+    <p class="hint">{{localize "FTAGS.Presets.Hint"}}</p>
+    {{#each presets}}
+      <button type="button" data-action="preset" data-preset-id="{{id}}">
+        <strong>{{label}}</strong><small>{{description}}</small>
+      </button>
+    {{/each}}
+  </details>
+
   {{#if hasTags}}
     <div class="ftags-manager__list">
       {{#each tags}}
         <div class="ftags-manager__row" data-tag-id="{{id}}">
-          <span class="ftags-color-swatch" style="--ftags-tag-color: {{color}};"></span>
+          <span class="ftags-color-swatch" data-ftags-shape="{{shape}}" style="--ftags-tag-color: {{color}};"></span>
           <span class="ftags-manager__name" title="{{name}}">{{name}}</span>
           <code>{{color}}</code>
           <div class="ftags-manager__row-actions">

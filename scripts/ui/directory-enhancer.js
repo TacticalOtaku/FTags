@@ -182,6 +182,7 @@ function createInteractiveStrip(tag, onClick) {
   button.className = "ftags-tag-strip";
   button.title = tag.name;
   button.dataset.tagId = tag.id;
+  button.dataset.ftagsShape = tag.shape;
   button.setAttribute("aria-label", game.i18n.format("FTAGS.Filter.OpenTag", {name: tag.name}));
   button.style.setProperty("--ftags-strip-background", tag.color);
   button.addEventListener("click", onClick);
@@ -202,4 +203,3 @@ function asElement(value) {
   if (value instanceof HTMLElement) return value;
   return value?.[0] instanceof HTMLElement ? value[0] : null;
 }
-

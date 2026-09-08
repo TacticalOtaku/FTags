@@ -8,6 +8,7 @@ const ERROR_KEYS = Object.freeze({
   "duplicate-name": "FTAGS.Errors.DuplicateName",
   "import-name-conflict": "FTAGS.Errors.DuplicateName",
   "invalid-color": "FTAGS.Errors.InvalidColor",
+  "invalid-shape": "FTAGS.Errors.InvalidShape",
   "locked-compendium": "FTAGS.Errors.LockedCompendium"
 });
 

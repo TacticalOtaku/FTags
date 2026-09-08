@@ -1,4 +1,5 @@
-import {MAX_TAG_NAME_LENGTH, MODULE_ID} from "../constants.js";
+import {MAX_TAG_NAME_LENGTH, MODULE_ID, TAG_SHAPES} from "../constants.js";
+import {getPresetTags} from "../core/presets.js";
 import {tagService} from "../runtime.js";
 import {notifyError, notifyInfo, notifyWarn} from "./notifications.js";
 
@@ -15,7 +16,8 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       edit: this.#editTag,
       delete: this.#deleteTag,
       export: this.#exportTags,
-      import: this.#importTags
+      import: this.#importTags,
+      preset: this.#applyPreset
     }
   };
 
@@ -42,6 +44,11 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       ...context,
       tags,
+      shapes: shapeOptions(),
+      presets: ["preparation", "story", "relations"].map(id => ({
+        id, label: game.i18n.localize(`FTAGS.Presets.${id}`),
+        description: getPresetTags(id).map(tag => tag.name).join(" · ")
+      })),
       hasTags: Boolean(tags.length),
       hasNoTags: !tags.length,
       maxTagNameLength: MAX_TAG_NAME_LENGTH
@@ -58,13 +65,26 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const nameInput = this.element.querySelector('input[name="newName"]');
     const colorInput = this.element.querySelector('input[name="newColor"]');
     try {
-      await tagService.createTag({name: nameInput?.value, color: colorInput?.value});
+      const shape = this.element.querySelector('select[name="newShape"]')?.value;
+      await tagService.createTag({name: nameInput?.value, color: colorInput?.value, shape});
       notifyInfo("FTAGS.Manager.CreateSuccess");
       await this.refreshRelatedApps();
     } catch (error) {
       notifyError(error);
       nameInput?.focus();
     }
+  }
+
+  /** @this {TagManagerApp} */
+  static async #applyPreset(_event, target) {
+    target.disabled = true;
+    try {
+      const result = await tagService.applyPreset(target.dataset.presetId);
+      notifyInfo("FTAGS.Presets.Added", result);
+      await this.refreshRelatedApps();
+    } catch (error) {
+      notifyError(error);
+    } finally { target.disabled = false; }
   }
 
   /** @this {TagManagerApp} */
@@ -88,7 +108,8 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
             default: true,
             callback: (_event, button) => ({
               name: button.form.elements.name.value,
-              color: button.form.elements.color.value
+              color: button.form.elements.color.value,
+              shape: button.form.elements.shape.value
             })
           }
         ]
@@ -210,9 +231,27 @@ function editDialogContent(tag) {
   colorInput.setAttribute("value", tag.color);
   colorLabel.append(colorText, colorInput);
 
-  wrapper.append(nameLabel, colorLabel);
+  const shapeLabel = document.createElement("label");
+  const shapeText = document.createElement("span");
+  shapeText.textContent = game.i18n.localize("FTAGS.Manager.Shape");
+  const shapeSelect = document.createElement("select");
+  shapeSelect.name = "shape";
+  for (const {value, label} of shapeOptions()) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    if (value === tag.shape) option.setAttribute("selected", "");
+    shapeSelect.append(option);
+  }
+  shapeLabel.append(shapeText, shapeSelect);
+  wrapper.append(nameLabel, colorLabel, shapeLabel);
   root.append(wrapper);
   return root;
+}
+
+function shapeOptions() {
+  const symbols = {circle: "●", square: "■", diamond: "◆", star: "★", triangle: "▲"};
+  return TAG_SHAPES.map(value => ({value, label: `${symbols[value]} ${game.i18n.localize(`FTAGS.Shapes.${value}`)}`}));
 }
 
 function downloadJson(json, filename) {

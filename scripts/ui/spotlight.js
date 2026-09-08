@@ -1,6 +1,6 @@
 import {MODULE_ID, SPOTLIGHT_DOCUMENT_TYPES, TYPE_LOCALIZATION_KEYS} from "../constants.js";
 import {chipColors, countSpotlightFilters, defaultSpotlightFilterState} from "../core/model.js";
-import {tagService} from "../runtime.js";
+import {tagService, tagRepository} from "../runtime.js";
 import {notifyError} from "./notifications.js";
 
 const {ApplicationV2, HandlebarsApplicationMixin} = foundry.applications.api;
@@ -55,7 +55,11 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    this.index ??= tagService.buildSpotlightIndex();
+    if (!this.index) {
+      const failures = await tagRepository.prepareCompendiumIndexes();
+      if (failures.length) ui.notifications.warn(game.i18n.format("FTAGS.Spotlight.IndexFailed", {packs: failures.join(", ")}));
+      this.index = tagService.buildSpotlightIndex();
+    }
     this.filters ??= await tagService.getSpotlightFilters();
     this.results = tagService.searchSpotlight(this.index, this.query, {
       limit: RESULT_LIMIT,
@@ -313,19 +317,26 @@ function prepareFilters(filters, filtersOpen) {
   const exclude = new Set(filters.excludeTagIds);
   const enabledTypes = new Set(filters.documentTypes);
   const filterCount = countSpotlightFilters(filters);
-  const tags = tagService.listTags();
+  const tags = tagService.listSearchTags();
   return {
     filtersOpen,
     filterCount,
     hasActiveFilters: Boolean(filterCount),
     filtersButtonLabel: game.i18n.format("FTAGS.Spotlight.FiltersButton", {count: filterCount}),
-    filterTags: tags.map((tag) => ({
+    filterTags: tags.filter(tag => !tag.automatic).map((tag) => ({
       ...tag,
       ignored: !include.has(tag.id) && !exclude.has(tag.id),
       included: include.has(tag.id),
       excluded: exclude.has(tag.id)
     })),
-    hasFilterTags: Boolean(tags.length),
+    hasFilterTags: tags.some(tag => !tag.automatic),
+    automaticFilterTags: tags.filter(tag => tag.automatic).map(tag => ({
+      ...tag,
+      ignored: !include.has(tag.id) && !exclude.has(tag.id),
+      included: include.has(tag.id), excluded: exclude.has(tag.id)
+    })),
+    hasAutomaticTags: tags.some(tag => tag.automatic),
+    automaticFiltersActive: tags.some(tag => tag.automatic && (include.has(tag.id) || exclude.has(tag.id))),
     matchModes: [
       {value: "any", key: "FTAGS.Spotlight.Match.Any"},
       {value: "all", key: "FTAGS.Spotlight.Match.All"}
@@ -367,9 +378,9 @@ function prepareResult(record, selected, index) {
     openLabel: game.i18n.format("FTAGS.Spotlight.Open", {
       name: record.name,
       metadata,
-      tags: record.tags.map((tag) => tag.name).join(", ")
+      tags: record.tags.filter(tag => !tag.automatic).map((tag) => tag.name).join(", ")
     }),
-    tags: record.tags.map((tag) => ({...tag, ...chipColors(tag.color)}))
+    tags: record.tags.filter(tag => !tag.automatic).map((tag) => ({...tag, ...chipColors(tag.color)}))
   };
 }
 

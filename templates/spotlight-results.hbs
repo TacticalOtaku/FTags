@@ -20,7 +20,7 @@
           </span>
           <span class="ftags-spotlight__result-tags" aria-hidden="true">
             {{#each tags}}
-              <span class="ftags-chip" style="--ftags-tag-color: {{color}}; --ftags-chip-background: {{background}}; --ftags-chip-border: {{border}}; --ftags-tag-foreground: {{foreground}};" title="{{name}}">{{name}}</span>
+              <span class="ftags-chip" style="--ftags-tag-color: {{color}}; --ftags-chip-background: {{background}}; --ftags-chip-border: {{border}}; --ftags-tag-foreground: {{foreground}};" title="{{name}}"><span class="ftags-chip__shape" data-ftags-shape="{{shape}}"></span><span class="ftags-chip__name">{{name}}</span></span>
             {{/each}}
           </span>
         </button>
