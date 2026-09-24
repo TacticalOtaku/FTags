@@ -6,7 +6,7 @@
       value="{{query}}"
       placeholder="{{localize 'FTAGS.Spotlight.Placeholder'}}"
       aria-label="{{localize 'FTAGS.Spotlight.SearchLabel'}}"
-      aria-controls="ftags-spotlight-results"
+      aria-controls="ftags-spotlight-listbox"
       autocomplete="off"
       spellcheck="false"
       data-ftags-spotlight-search
@@ -67,7 +67,7 @@
         <p class="hint">{{localize "FTAGS.Spotlight.NoFilterTags"}}</p>
       {{/if}}
       {{#if hasAutomaticTags}}
-        <details class="ftags-spotlight__automatic" {{#if automaticFiltersActive}}open{{/if}}>
+        <details class="ftags-spotlight__automatic" data-ftags-automatic {{#if automaticOpen}}open{{/if}}>
           <summary>{{localize "FTAGS.Spotlight.Automatic"}}</summary>
           <p class="hint">{{localize "FTAGS.Spotlight.AutomaticHint"}}</p>
           <div class="ftags-spotlight__tag-filters">

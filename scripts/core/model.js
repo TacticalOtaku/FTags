@@ -60,6 +60,28 @@ export function normalizeTagShape(value = "circle") {
   return value;
 }
 
+/** Case-insensitive identity of a tag name, shared by every uniqueness check. */
+export function tagNameKey(name) {
+  return String(name ?? "").normalize("NFC").toLocaleLowerCase();
+}
+
+/**
+ * Persisted entries are repaired rather than dropped where possible, so a stricter future rule
+ * or a hand-edited world setting cannot silently erase tags. Only an unusable id or name, or an
+ * unreadable colour, still discards the entry.
+ */
+function normalizeStoredTag(raw) {
+  const id = normalizeTagId(raw?.id);
+  const name = String(raw?.name ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TAG_NAME_LENGTH).trim();
+  if (!name) throw new TagValidationError("name-required");
+  return {
+    id,
+    name,
+    color: normalizeTagColor(raw?.color),
+    shape: TAG_SHAPES.includes(raw?.shape) ? raw.shape : "circle"
+  };
+}
+
 export function emptyDictionary() {
   return {schemaVersion: SCHEMA_VERSION, tags: []};
 }
@@ -72,14 +94,18 @@ export function coerceDictionary(raw) {
   const tags = [];
   for (const candidate of raw.tags) {
     try {
-      const tag = normalizeTag(candidate);
-      const nameKey = tag.name.toLocaleLowerCase();
-      if (seenIds.has(tag.id) || seenNames.has(nameKey)) continue;
+      const tag = normalizeStoredTag(candidate);
+      const nameKey = tagNameKey(tag.name);
+      if (seenIds.has(tag.id) || seenNames.has(nameKey)) {
+        console.warn("FTags: Skipped a duplicate stored tag", candidate);
+        continue;
+      }
       seenIds.add(tag.id);
       seenNames.add(nameKey);
       tags.push(tag);
-    } catch {
-      // Ignore malformed persisted entries so one bad value cannot break the module UI.
+    } catch (error) {
+      // One bad value must not break the module UI, but it should never vanish silently.
+      console.warn("FTags: Skipped an unreadable stored tag", candidate, error);
     }
   }
 
@@ -111,10 +137,8 @@ export function validateDictionaryPayload(raw) {
 
 export function validateTagDraft(raw, existingTags = [], editingId = null) {
   const tag = normalizeTag(raw, {requireId: Boolean(raw?.id)});
-  const duplicate = existingTags.find((item) => (
-    item.id !== editingId
-    && item.name.localeCompare(tag.name, undefined, {sensitivity: "base"}) === 0
-  ));
+  const nameKey = tagNameKey(tag.name);
+  const duplicate = existingTags.find((item) => item.id !== editingId && tagNameKey(item.name) === nameKey);
   if (duplicate) throw new TagValidationError("duplicate-name", {name: tag.name});
   return tag;
 }
@@ -123,26 +147,23 @@ export function mergeDictionaries(currentRaw, importedRaw) {
   const current = coerceDictionary(currentRaw);
   const imported = validateDictionaryPayload(importedRaw);
   const byId = new Map(current.tags.map((tag) => [tag.id, tag]));
-  const currentNameOwners = new Map(
-    current.tags.map((tag) => [tag.name.toLocaleLowerCase(), tag.id])
-  );
 
   const summary = {created: 0, updated: 0, unchanged: 0};
   for (const tag of imported.tags) {
-    const nameKey = tag.name.toLocaleLowerCase();
-    const nameOwner = currentNameOwners.get(nameKey);
-    if (nameOwner && nameOwner !== tag.id) {
-      throw new TagValidationError("import-name-conflict", {name: tag.name});
-    }
-
     const previous = byId.get(tag.id);
     if (!previous) summary.created += 1;
     else if (previous.name === tag.name && previous.color === tag.color && previous.shape === tag.shape) summary.unchanged += 1;
     else summary.updated += 1;
-
-    if (previous) currentNameOwners.delete(previous.name.toLocaleLowerCase());
-    currentNameOwners.set(nameKey, tag.id);
     byId.set(tag.id, tag);
+  }
+
+  // Names are checked against the merged result, so an import may swap or rename names freely
+  // as long as the final dictionary stays unambiguous.
+  const owners = new Map();
+  for (const tag of byId.values()) {
+    const nameKey = tagNameKey(tag.name);
+    if (owners.has(nameKey)) throw new TagValidationError("import-name-conflict", {name: tag.name});
+    owners.set(nameKey, tag.id);
   }
 
   if (byId.size > MAX_TAG_COUNT) {
@@ -167,15 +188,14 @@ export function sanitizeTagIds(values, validIds = null) {
   return ids;
 }
 
-export function matchesAnyTag(assignedIds, activeIds) {
-  const active = activeIds instanceof Set ? activeIds : new Set(activeIds ?? []);
-  if (!active.size) return true;
-  return sanitizeTagIds(assignedIds).some((id) => active.has(id));
-}
-
-export function partitionVisibleTags(assignedIds, dictionaryRaw, limit = MAX_VISIBLE_TAGS) {
-  const dictionary = coerceDictionary(dictionaryRaw);
-  const byId = new Map(dictionary.tags.map((tag) => [tag.id, tag]));
+/**
+ * Split assigned tags into visible markers and overflow. Pass a prepared `Map` of tags by id when
+ * calling this per directory row; a raw dictionary is normalized on every call.
+ */
+export function partitionVisibleTags(assignedIds, dictionaryOrTagsById, limit = MAX_VISIBLE_TAGS) {
+  const byId = dictionaryOrTagsById instanceof Map
+    ? dictionaryOrTagsById
+    : new Map(coerceDictionary(dictionaryOrTagsById).tags.map((tag) => [tag.id, tag]));
   const resolved = sanitizeTagIds(assignedIds, new Set(byId.keys()))
     .map((id) => byId.get(id));
   return {
@@ -206,10 +226,6 @@ function toHex(channels) {
   return `#${channels.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`.toUpperCase();
 }
 
-export function contrastTextColor(hex) {
-  return relativeLuminance(hexChannels(hex)) > 0.179 ? "#111111" : "#FFFFFF";
-}
-
 /**
  * Resolve the chip background and a foreground that stays readable on it. The background is
  * computed here rather than through CSS `color-mix` so the contrast decision is made against
@@ -234,15 +250,6 @@ export function getChildFolders(folder) {
   return (folder?.children ?? [])
     .map((child) => child?.folder ?? child)
     .filter((child) => child?.documentName === "Folder");
-}
-
-export function collectSubfolderIds(folder) {
-  const ids = [];
-  for (const child of getChildFolders(folder)) {
-    if (!child?.id) continue;
-    ids.push(child.id, ...collectSubfolderIds(child));
-  }
-  return ids;
 }
 
 export function collectFolderDocuments(folder) {
@@ -313,7 +320,7 @@ function assertUniqueTags(tags) {
   const ids = new Set();
   const names = new Set();
   for (const tag of tags) {
-    const nameKey = tag.name.toLocaleLowerCase();
+    const nameKey = tagNameKey(tag.name);
     if (ids.has(tag.id)) throw new TagValidationError("duplicate-id", {id: tag.id});
     if (names.has(nameKey)) throw new TagValidationError("duplicate-name", {name: tag.name});
     ids.add(tag.id);

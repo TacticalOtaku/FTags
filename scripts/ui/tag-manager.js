@@ -1,6 +1,7 @@
 import {MAX_TAG_NAME_LENGTH, MODULE_ID, TAG_SHAPES} from "../constants.js";
-import {getPresetTags} from "../core/presets.js";
-import {tagService} from "../runtime.js";
+import {getPresetTags, PRESET_IDS} from "../core/presets.js";
+import {tagRepository, tagService} from "../runtime.js";
+import {focusExistingInstance} from "./app-utils.js";
 import {notifyError, notifyInfo, notifyWarn} from "./notifications.js";
 
 const {ApplicationV2, DialogV2, HandlebarsApplicationMixin} = foundry.applications.api;
@@ -28,6 +29,8 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor({returnApp = null, ...options} = {}) {
     super(options);
     this.returnApp = returnApp;
+    // The last colour and shape are kept, so a series of similar tags needs fewer clicks.
+    this.newTagStyle = {color: "#6F8FAF", shape: "circle"};
   }
 
   get title() {
@@ -38,14 +41,24 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return Boolean(game.user?.isGM) && super._canRender(options);
   }
 
+  /** The settings menu and toolbar buttons both open the one manager window. */
+  render(options, _options) {
+    const existing = focusExistingInstance(this);
+    if (!existing) return super.render(options, _options);
+    if (this.returnApp) existing.returnApp = this.returnApp;
+    return Promise.resolve(existing);
+  }
+
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
+    this.dictionaryRevision = tagRepository.dictionaryRevision;
     const tags = tagService.listTags();
     return {
       ...context,
       tags,
-      shapes: shapeOptions(),
-      presets: ["preparation", "story", "relations"].map(id => ({
+      shapes: shapeOptions().map((option) => ({...option, selected: option.value === this.newTagStyle.shape})),
+      newColor: this.newTagStyle.color,
+      presets: PRESET_IDS.map(id => ({
         id, label: game.i18n.localize(`FTAGS.Presets.${id}`),
         description: getPresetTags(id).map(tag => tag.name).join(" · ")
       })),
@@ -55,9 +68,22 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     };
   }
 
-  async refreshRelatedApps() {
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    this.element.querySelector('input[name="newName"]')?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.isComposing) return;
+      event.preventDefault();
+      this.element.querySelector('[data-action="create"]')?.click();
+    });
+  }
+
+  /**
+   * Show the change at once. Other windows and directories follow the dictionary setting change,
+   * and skip this window because it already shows the current revision.
+   */
+  async refreshRelatedApps({focusName = false} = {}) {
     await this.render();
-    if (this.returnApp?.rendered) await this.returnApp.render();
+    if (focusName) this.element?.querySelector('input[name="newName"]')?.focus();
   }
 
   /** @this {TagManagerApp} */
@@ -67,8 +93,9 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     try {
       const shape = this.element.querySelector('select[name="newShape"]')?.value;
       await tagService.createTag({name: nameInput?.value, color: colorInput?.value, shape});
+      this.newTagStyle = {color: colorInput?.value ?? this.newTagStyle.color, shape: shape ?? this.newTagStyle.shape};
       notifyInfo("FTAGS.Manager.CreateSuccess");
-      await this.refreshRelatedApps();
+      await this.refreshRelatedApps({focusName: true});
     } catch (error) {
       notifyError(error);
       nameInput?.focus();
@@ -150,6 +177,9 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       } else {
         notifyInfo("FTAGS.Manager.DeleteSuccess", {count: result.cleaned});
       }
+      if (result.lockedPacks?.length) {
+        notifyWarn("FTAGS.Manager.DeleteLockedPacks", {packs: result.lockedPacks.join(", ")});
+      }
       await this.refreshRelatedApps();
     } catch (error) {
       notifyError(error);
@@ -199,9 +229,7 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 export function openTagManager(parentApp = null) {
   if (!game.user?.isGM) return null;
-  const app = new TagManagerApp({returnApp: parentApp});
-  if (parentApp?.renderChild) return parentApp.renderChild(app, {force: true});
-  return app.render({force: true});
+  return new TagManagerApp({returnApp: parentApp}).render({force: true});
 }
 
 function editDialogContent(tag) {
@@ -255,14 +283,13 @@ function shapeOptions() {
 }
 
 function downloadJson(json, filename) {
-  const blob = new Blob([json], {type: "application/json;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
+  const save = foundry.utils?.saveDataToFile;
+  if (typeof save === "function") return save(json, "application/json", filename);
+  const url = URL.createObjectURL(new Blob([json], {type: "application/json;charset=utf-8"}));
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
-  anchor.hidden = true;
-  document.body.append(anchor);
   anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+  // Revoking synchronously can cancel the download before the browser picks up the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

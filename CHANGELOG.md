@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.3.1
+
+### Fixed
+
+- Spotlight no longer loses or crashes on filter changes made while documents update (for example
+  during combat); filter edits stay local until saved and never trigger a full index rebuild.
+- Spotlight opens immediately with a loading state instead of staying invisible while compendium
+  indexes load, and a repeated shortcut or dot click no longer opens a second window.
+- Hovering results near the list edge no longer scrolls the list in a loop.
+- Result tags no longer get clipped at the left edge: chips shrink with an ellipsis, at most three
+  are shown plus a `+N` chip, and the footer reports the total number of matches.
+- Narrow-window layouts now follow the window width (container queries) instead of the browser
+  viewport, so resizing Spotlight or the manager actually wraps content; result rows grow to fit.
+- Directory markers: the focus outline is no longer clipped for diamonds, stars and triangles, a
+  thin shadow keeps markers visible on coloured folders, the click area is larger without changing
+  the 6px layout, and clipped shapes are drawn with the same visual weight as circles.
+- Tag swatches keep their outline for every shape.
+- Newly tagged compendium documents appear in Spotlight and are found by tag deletion without a
+  reload; the pack index is kept in sync with document updates.
+- Deleting a tag aborts when a compendium document cannot be loaded, reports locked compendiums
+  that keep the tag, and preset tags get unique ids so reapplying a set cannot revive stale ones.
+- Folder propagation in compendiums loads all documents in one request before anything is written,
+  and counts contents from the pack index even if the pack tree was not built yet.
+- Unsaved checkboxes in the assignment window survive tag changes made elsewhere.
+- "Manage tags" no longer appears on folders that cannot hold tags; world and compendium documents
+  with the same id no longer share an assignment window.
+- The tag manager opens as a single window from every entry point.
+- Directory refreshes are debounced, and only the affected directory types are redrawn; the
+  dictionary is normalized once per change instead of once per directory row.
+- Importing a dictionary that swaps names between existing tags is accepted; name uniqueness is
+  checked the same way everywhere. Stored tags with a missing shape or overlong name are repaired
+  instead of silently dropped.
+
+### Changed
+
+- Folder results in Spotlight reveal the folder in its directory instead of opening its settings.
+- Partial words (3+ letters) match automatic D&D5e values while typing; search keeps `й` distinct.
+- English automatic tag names are capitalised; English messages avoid broken plurals.
+- The tag manager remembers the last colour and shape and creates a tag on Enter.
+- Notifications escape world data through Foundry's formatter.
+
+### Removed
+
+- Deprecated v14 context-menu keys (`name`, `condition`, `callback`), the duplicate
+  `renderCompendium` handler and subscriptions to nonexistent compendium hooks.
+- Dead code, styles and translation keys.
+
+### Development
+
+- Added the Node test suite, `tools/validate.mjs`, `tools/build.mjs`, `npm run build` and a lockfile.
+
 ## 1.3.0
 
 ### Added

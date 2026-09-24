@@ -16,6 +16,19 @@ import {
 import {getAutomaticIndexFields} from "./automatic-tags.js";
 
 export class TagRepository {
+  #dictionaryCache = null;
+  #dictionaryRevision = 0;
+
+  /** Increases whenever the dictionary may have changed; windows compare it to skip redundant renders. */
+  get dictionaryRevision() {
+    return this.#dictionaryRevision;
+  }
+
+  #invalidateDictionary() {
+    this.#dictionaryCache = null;
+    this.#dictionaryRevision += 1;
+  }
+
   async prepareCompendiumIndexes() {
     this.assertGM();
     // Share an in-flight read between simultaneous Spotlight renders.
@@ -51,7 +64,10 @@ export class TagRepository {
       config: false,
       type: Object,
       default: emptyDictionary(),
-      onChange: () => onDataChange?.("dictionary")
+      onChange: () => {
+        this.#invalidateDictionary();
+        onDataChange?.("dictionary");
+      }
     });
 
     game.settings.register(MODULE_ID, SETTINGS.SPOTLIGHT_FILTERS, {
@@ -76,13 +92,26 @@ export class TagRepository {
     }
   }
 
+  /**
+   * The normalized dictionary is cached until the setting changes; directory rendering and
+   * Spotlight read it many times per render. Callers receive their own tag array to mutate.
+   */
   getDictionary() {
-    return coerceDictionary(game.settings.get(MODULE_ID, SETTINGS.DICTIONARY));
+    if (!this.#dictionaryCache) {
+      const dictionary = coerceDictionary(game.settings.get(MODULE_ID, SETTINGS.DICTIONARY));
+      dictionary.tags.forEach((tag) => Object.freeze(tag));
+      this.#dictionaryCache = dictionary;
+    }
+    return {...this.#dictionaryCache, tags: [...this.#dictionaryCache.tags]};
   }
 
   async setDictionary(dictionary) {
     this.assertGM();
-    return game.settings.set(MODULE_ID, SETTINGS.DICTIONARY, coerceDictionary(dictionary));
+    try {
+      return await game.settings.set(MODULE_ID, SETTINGS.DICTIONARY, coerceDictionary(dictionary));
+    } finally {
+      this.#invalidateDictionary();
+    }
   }
 
   getTagIds(document) {
@@ -98,20 +127,47 @@ export class TagRepository {
       throw new Error("Unsupported FTags document");
     }
 
-    if (document.pack) {
-      const pack = game.packs?.get(document.pack);
-      if (pack?.locked) {
-        const error = new Error("locked-compendium");
-        error.code = "locked-compendium";
-        throw error;
-      }
-    }
+    if (document.pack) this.assertPackUnlocked(document.pack);
 
     const clean = sanitizeTagIds(tagIds);
     const current = this.getTagIds(document);
     if (arraysEqual(current, clean)) return document;
     if (!clean.length) return document.unsetFlag(MODULE_ID, FLAGS.TAG_IDS);
     return document.setFlag(MODULE_ID, FLAGS.TAG_IDS, clean);
+  }
+
+  /**
+   * Compendium indexes only merge keys they already hold, so an entry indexed before its first
+   * tag was assigned would keep reporting no tags. Copy the indexed fields from the source data.
+   */
+  syncCompendiumIndexEntry(document) {
+    if (!document?.pack || !document.id) return;
+    const pack = this.getPack(document.pack);
+    const entry = pack?.index?.get?.(document.id);
+    if (!entry) return;
+    const source = document._source ?? document;
+    const fields = [`flags.${MODULE_ID}.${FLAGS.TAG_IDS}`, "name", "folder", ...getAutomaticIndexFields(pack.documentName)];
+    for (const field of fields) {
+      const value = foundry.utils.getProperty(source, field);
+      if (value === undefined) {
+        const parts = field.split(".");
+        const parent = parts.length > 1 ? foundry.utils.getProperty(entry, parts.slice(0, -1).join(".")) : entry;
+        if (parent && typeof parent === "object") delete parent[parts.at(-1)];
+      } else {
+        foundry.utils.setProperty(entry, field, foundry.utils.deepClone(value));
+      }
+    }
+  }
+
+  getPack(packId) {
+    return packId ? game.packs?.get(packId) ?? null : null;
+  }
+
+  assertPackUnlocked(packId) {
+    if (!this.getPack(packId)?.locked) return;
+    const error = new Error("locked-compendium");
+    error.code = "locked-compendium";
+    throw error;
   }
 
   getSpotlightFilterState() {
@@ -131,7 +187,8 @@ export class TagRepository {
     this.assertGM();
     const current = this.getSpotlightFilterState();
     const cleaned = normalizeSpotlightFilterState(current, validTagIds);
-    if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
+    // Compare normalized shapes so key order or legacy extras do not cause a write on every load.
+    if (JSON.stringify(normalizeSpotlightFilterState(current)) !== JSON.stringify(cleaned)) {
       await this.setSpotlightFilterState(cleaned);
     }
     return cleaned;
@@ -169,14 +226,17 @@ export class TagRepository {
     ];
   }
 
+  /**
+   * Documents in a folder tree. Compendium folders answer with index entries, read straight from
+   * the pack index so the result does not depend on whether the pack window built its tree.
+   */
   getFolderDocuments(folder) {
     if (!folder || folder.documentName !== "Folder" || !SUPPORTED_DOCUMENT_TYPES.includes(folder.type)) return [];
     if (folder.pack) {
-      // Compendium folders yield index entries, which carry no `documentName` of their own;
-      // the owning pack decides whether they are taggable.
-      const pack = game.packs?.get(folder.pack);
+      const pack = this.getPack(folder.pack);
       if (!pack || !SUPPORTED_DOCUMENT_TYPES.includes(pack.documentName)) return [];
-      return collectFolderDocuments(folder);
+      const folderIds = new Set([folder.id, ...getPackSubfolderIds(pack, folder.id)]);
+      return [...(pack.index ?? [])].filter((entry) => folderIds.has(entry.folder?.id ?? entry.folder));
     }
     return collectFolderDocuments(folder).filter((document) => this.isTaggable(document));
   }
@@ -193,6 +253,28 @@ export class TagRepository {
       throw error;
     }
   }
+}
+
+/** Ids of every folder nested below `folderId` in a pack, following parent links. */
+export function getPackSubfolderIds(pack, folderId) {
+  const folders = [...(pack?.folders ?? [])];
+  const parentOf = (folder) => folder?._source?.folder ?? folder?.folder?.id ?? folder?.folder ?? null;
+  const byId = new Map(folders.map((folder) => [folder.id, folder]));
+  const ids = [];
+  for (const folder of folders) {
+    if (folder.id === folderId) continue;
+    const visited = new Set();
+    let parentId = parentOf(folder);
+    while (parentId && !visited.has(parentId)) {
+      if (parentId === folderId) {
+        ids.push(folder.id);
+        break;
+      }
+      visited.add(parentId);
+      parentId = parentOf(byId.get(parentId));
+    }
+  }
+  return ids;
 }
 
 function arraysEqual(left, right) {

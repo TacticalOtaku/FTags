@@ -1,6 +1,6 @@
 <section class="ftags-spotlight__results">
   {{#if hasResults}}
-    <div class="ftags-spotlight__list" role="listbox" aria-label="{{localize 'FTAGS.Spotlight.ResultsLabel'}}">
+    <div id="ftags-spotlight-listbox" class="ftags-spotlight__list" role="listbox" aria-label="{{localize 'FTAGS.Spotlight.ResultsLabel'}}">
       {{#each results}}
         <button
           type="button"
@@ -22,6 +22,9 @@
             {{#each tags}}
               <span class="ftags-chip" style="--ftags-tag-color: {{color}}; --ftags-chip-background: {{background}}; --ftags-chip-border: {{border}}; --ftags-tag-foreground: {{foreground}};" title="{{name}}"><span class="ftags-chip__shape" data-ftags-shape="{{shape}}"></span><span class="ftags-chip__name">{{name}}</span></span>
             {{/each}}
+            {{#if overflow}}
+              <span class="ftags-chip ftags-chip--overflow" title="{{overflow.title}}">{{overflow.label}}</span>
+            {{/if}}
           </span>
         </button>
       {{/each}}
@@ -32,7 +35,10 @@
     </footer>
   {{else}}
     <p class="ftags-empty" aria-live="polite">
-      {{#if hasNoTypes}}
+      {{#if isLoading}}
+        <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+        {{localize "FTAGS.Spotlight.Loading"}}
+      {{else if hasNoTypes}}
         {{localize "FTAGS.Spotlight.NoObjectTypes"}}
       {{else if hasIndex}}
         {{localize "FTAGS.Spotlight.NoResults"}}
