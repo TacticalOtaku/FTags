@@ -1,5 +1,4 @@
 {
-  "FTAGS.Name": "FTags",
   "FTAGS.Manager.Shape": "Форма",
   "FTAGS.Shapes.circle": "Круг",
   "FTAGS.Shapes.square": "Квадрат",
@@ -39,11 +38,12 @@
   "FTAGS.Manager.ImportTitle": "Импорт словаря меток",
   "FTAGS.Manager.ImportSummary": "Будет создано: {created}; обновлено: {updated}; без изменений: {unchanged}. Назначения не импортируются.",
   "FTAGS.Manager.DeleteTitle": "Удаление метки",
-  "FTAGS.Manager.DeleteContent": "Удалить «{name}» и снять её со всех поддерживаемых документов и папок мира?",
+  "FTAGS.Manager.DeleteContent": "Удалить «{name}» и снять её со всех поддерживаемых объектов мира и незаблокированных компендиумов?",
   "FTAGS.Manager.CreateSuccess": "Метка создана.",
   "FTAGS.Manager.UpdateSuccess": "Метка обновлена.",
   "FTAGS.Manager.DeleteSuccess": "Метка снята с объектов: {count}.",
-  "FTAGS.Manager.DeleteAborted": "Удаление остановлено: не удалось обновить {count} объектов. Метка сохранена; устраните ошибки и повторите попытку.",
+  "FTAGS.Manager.DeleteAborted": "Удаление остановлено: часть объектов не удалось загрузить или обновить ({count}). Метка сохранена; устраните ошибки и повторите попытку.",
+  "FTAGS.Manager.DeleteLockedPacks": "В заблокированных компендиумах метка осталась на документах: {packs}. Нигде она больше не отображается; чтобы очистить и их, разблокируйте паки перед удалением.",
   "FTAGS.Manager.ExportSuccess": "Словарь меток экспортирован.",
   "FTAGS.Manager.ImportSuccess": "Словарь меток импортирован.",
   "FTAGS.Assignment.Title": "FTags · Назначение меток",
@@ -61,7 +61,6 @@
   "FTAGS.Filter.FullList": "Все метки: {names}",
   "FTAGS.Filter.OpenTag": "Найти в Spotlight объекты с меткой «{name}»",
   "FTAGS.Common.Cancel": "Отмена",
-  "FTAGS.Common.Confirm": "Подтвердить",
   "FTAGS.Common.Save": "Сохранить",
   "FTAGS.Common.Edit": "Изменить",
   "FTAGS.Common.Delete": "Удалить",
@@ -82,8 +81,10 @@
   "FTAGS.Spotlight.SearchLabel": "Поиск объектов с метками",
   "FTAGS.Spotlight.ResultsLabel": "Результаты поиска объектов с метками",
   "FTAGS.Spotlight.ResultCount": "Показано: {count}",
+  "FTAGS.Spotlight.ResultCountLimited": "Показано: {count} из {total}. Уточните запрос, чтобы увидеть остальные.",
   "FTAGS.Spotlight.Help": "↑↓ Выбор · Enter Открыть · Esc Закрыть",
   "FTAGS.Spotlight.Empty": "Не найдены документы с ручными или поддерживаемыми автоматическими метками.",
+  "FTAGS.Spotlight.Loading": "Загрузка поискового индекса…",
   "FTAGS.Spotlight.NoResults": "Объекты с такими метками или названием не найдены.",
   "FTAGS.Spotlight.NoObjectTypes": "Не выбран ни один тип объектов. Включите хотя бы один в фильтрах.",
   "FTAGS.Spotlight.Open": "Открыть {name}. {metadata}. Метки: {tags}",
@@ -111,6 +112,5 @@
   "FTAGS.Types.Cards": "Карты",
   "FTAGS.Types.Playlist": "Плейлист",
   "FTAGS.Types.Macro": "Макрос",
-  "FTAGS.Types.Folder": "Папка",
-  "FTAGS.Types.Compendium": "Компендиум"
+  "FTAGS.Types.Folder": "Папка"
 }

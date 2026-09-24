@@ -12,21 +12,25 @@ const ERROR_KEYS = Object.freeze({
   "locked-compendium": "FTAGS.Errors.LockedCompendium"
 });
 
+// Values such as tag or pack names come from world data, so Foundry escapes them while formatting.
+function notify(type, key, data) {
+  ui.notifications[type](key, {localize: true, format: data});
+}
+
 export function notifyError(error, fallbackKey = "FTAGS.Errors.Generic") {
   console.error("FTags", error);
   const key = ERROR_KEYS[error?.code] ?? fallbackKey;
-  const details = {
+  notify("error", key, {
     ...(error?.details ?? {}),
     max: error?.details?.max ?? MAX_TAG_NAME_LENGTH,
     reason: error?.message ?? String(error)
-  };
-  ui.notifications.error(game.i18n.format(key, details));
+  });
 }
 
 export function notifyInfo(key, data = {}) {
-  ui.notifications.info(game.i18n.format(key, data));
+  notify("info", key, data);
 }
 
 export function notifyWarn(key, data = {}) {
-  ui.notifications.warn(game.i18n.format(key, data));
+  notify("warn", key, data);
 }

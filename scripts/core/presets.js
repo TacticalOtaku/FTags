@@ -16,10 +16,21 @@ const PRESETS = {
   ]
 };
 
+export const PRESET_IDS = Object.freeze(Object.keys(PRESETS));
+
+/**
+ * `baseId` identifies the preset entry. Created tags get a unique suffix on top of it, so a tag
+ * that was deleted while locked compendiums still carried its id cannot be revived by
+ * reapplying the set.
+ */
 export function getPresetTags(id, language = globalThis.game?.i18n?.lang) {
   if (!Object.hasOwn(PRESETS, id)) throw new Error("Unknown FTags preset");
   return PRESETS[id].map(([key, ru, en, color, shape]) => ({
-    id: `preset-${id}-${key}`, name: language?.startsWith("ru") ? ru : en, color, shape,
+    baseId: `preset-${id}-${key}`, name: language?.startsWith("ru") ? ru : en, color, shape,
     aliases: [ru, en]
   }));
+}
+
+export function isPresetInstance(tagId, baseId) {
+  return tagId === baseId || String(tagId).startsWith(`${baseId}-`);
 }

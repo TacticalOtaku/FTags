@@ -13,16 +13,16 @@ Author: **TacticalOtaku**.
 - Assignment from the right-click context menu in world sidebars and compendium pack sheets.
 - Up to three small colored markers per row, followed by a composite overflow dot made from hidden tag colors; no tag text is inserted into directory rows.
 - Clicking an individual directory dot opens Spotlight with that tag included; FTags never hides core directory rows.
-- Spotlight results use larger colored tags with consistent light text, readable truncation tooltips, and intentional narrow-window wrapping.
+- Spotlight results use larger colored tags whose text colour is picked per tag for contrast, show up to three tags plus a `+N` chip, and wrap below the name when the Spotlight window itself is resized narrow.
 - Spotlight tag states: ignore, include, or exclude; included tags can match ANY or ALL.
 - Filters for object types, relevance/name/type sorting, reset, and per-GM persistence.
 - GM-only Spotlight search across tagged world and compendium objects by object name or tag name.
 - `#term` Spotlight tokens search tag names only; arrow keys, Enter, and Escape provide full keyboard navigation.
-- Editable Foundry keybinding with no forced default, plus a magnifying-glass shortcut in supported directory toolbars and compendium headers.
+- Editable Foundry keybinding (default `Ctrl+Shift+F`), plus a magnifying-glass shortcut in supported directory toolbars and compendium headers.
 - Folder tags do not inherit automatically; a GM can explicitly add the selected tags to all current documents in that folder and its subfolders (including compendium folders).
 - Protected writes: clear warnings and disabled save when trying to tag documents inside locked compendiums.
 - Tag manager with create, edit, color, delete, import, and export actions.
-- Manual marker shapes: circle, square, diamond, star and triangle, all within the original 6px directory marker size.
+- Manual marker shapes: circle, square, diamond, star and triangle. Directory markers keep their 6px layout box; clipped shapes bleed by up to 1px so every shape carries the same visual weight, and a thin shadow keeps them visible on coloured folder headers.
 - Ready-made Preparation, Story and Relationships tag sets. Reapplying a set preserves existing names, colors and shapes and does not create duplicates.
 - Automatic D&D5e tags for standard creature types, NPC CR (0–30 and 1/8, 1/4, 1/2), item types, rarity and melee/ranged weapon category. These are searchable even without manual assignments.
 - Versioned JSON dictionary import/export. Assignments are intentionally not exported.
@@ -35,7 +35,7 @@ Author: **TacticalOtaku**.
 2. Make sure `module.json` is directly inside that `ftags` directory.
 3. Restart Foundry VTT and enable **FTags** in the world module manager.
 
-For a packaged release, extract `ftags-1.3.0.zip` into `Data/modules`; the archive should contain the top-level `ftags` directory.
+For a packaged release, extract `ftags-1.3.1.zip` into `Data/modules`; the archive should contain the top-level `ftags` directory.
 
 ## Usage
 
@@ -44,9 +44,9 @@ For a packaged release, extract `ftags-1.3.0.zip` into `Data/modules`; the archi
 3. Right-click a supported document or folder and choose **Manage tags**.
 4. Click a rendered color dot to open Spotlight with that tag included in its filters; hover it to read the tag name.
 5. When assigning tags to a folder, optionally enable the one-time action that adds the selected tags to existing documents in the folder tree.
-6. Open **Game Settings → Configure Controls → FTags**, assign a key to **Open FTags Spotlight**, then use it anywhere in the world. The magnifying-glass button in a supported directory opens the same search.
+6. Press `Ctrl+Shift+F` (rebindable in **Game Settings → Configure Controls → FTags → Open FTags Spotlight**) anywhere in the world. The magnifying-glass button in a supported directory opens the same search.
 
-Spotlight lists supported world and compendium objects with at least one manual or supported automatic tag. Normal words may match either the object name or a tag name. Prefix a word with `#` to require a tag-name match, for example `wolf #prepared`. Multiple words use AND semantics. At most 100 matches are shown at once.
+Spotlight lists supported world and compendium objects with at least one manual or supported automatic tag. Normal words may match either the object name or a tag name. Prefix a word with `#` to require a tag-name match, for example `wolf #prepared`. Multiple words use AND semantics. At most 100 matches are shown at once; the footer says how many matched in total. Selecting a folder result reveals the folder in its directory; other results open their sheet.
 
 ### Automatic D&D5e search
 
@@ -64,15 +64,15 @@ CR 1/8
 #"very rare"
 ```
 
-CR predicates compare numbers exactly and support `=`, `<`, `>`, `<=` and `>=`; multiple predicates combine with AND. Automatic category aliases match whole values so `rare` does not match `very rare` or `uncommon`. Use quotes for a manual tag containing spaces. This is a deterministic query syntax, not an AI natural-language parser.
+CR predicates compare numbers exactly and support `=`, `<`, `>`, `<=` and `>=`; multiple predicates combine with AND. Automatic category aliases match whole values so `rare` does not match `very rare` or `uncommon`; a partial word of three or more letters matches the beginning of a value, so `unde` already finds undead. Search ignores accents and treats `ё` as `е`, but keeps `й` distinct from `и`. Use quotes for a manual tag containing spaces. This is a deterministic query syntax, not an AI natural-language parser.
 
-The first search loads selected index fields from compendiums, including locked packs. FTags does not load every full document or change pack locks. A failed pack read shows a warning; close and reopen Spotlight to retry. Large libraries may take longer on the first search.
+The first search loads selected index fields from compendiums, including locked packs. FTags does not load every full document or change pack locks. Spotlight opens immediately and shows a loading state while the index is built. A failed pack read shows a warning; close and reopen Spotlight to retry.
 
 The D&D5e adapter follows the official [NPC data](https://github.com/foundryvtt/dnd5e/blob/master/module/data/actor/npc.mjs), [weapon data](https://github.com/foundryvtt/dnd5e/blob/master/module/data/item/weapon.mjs) and [system configuration](https://github.com/foundryvtt/dnd5e/blob/master/module/config.mjs). Standard weapon categories distinguish melee/ranged; thrown melee weapons remain melee, siege weapons are ranged, and natural weapons without a defined category are not guessed.
 
 Use the sliders button in Spotlight to open advanced filters. Each tag can be ignored, included, or excluded. Included tags can require at least one match (ANY) or every selected tag (ALL). Object types and result sorting can be adjusted independently. These settings are stored for the current GM; **Reset** restores all object types, relevance sorting, and no tag restrictions.
 
-Deleting a tag requires confirmation and removes that tag id from all supported world documents and folders. If any object cannot be updated, dictionary deletion is aborted and the tag stays available for a safe retry.
+Deleting a tag requires confirmation and removes that tag id from all supported world documents, folders and unlocked compendiums. If any object cannot be loaded or updated, dictionary deletion is aborted and the tag stays available for a safe retry. Documents in locked compendiums keep the stale id; FTags names those packs in a warning, and the id is never reused.
 
 ## Import and export
 
@@ -112,9 +112,9 @@ npm test
 npm run validate
 ```
 
-`npm ci` installs development-only Handlebars for template verification. Foundry provides Handlebars at runtime; the installed module has no additional runtime dependency. The optional browser harness runs with `node tools/check-ui.mjs`; set `FTAGS_PLAYWRIGHT_PATH` to an installed Playwright package path if needed and `FTAGS_BROWSER_CHANNEL=msedge` to use an installed Edge browser. Harness screenshots go into `artifacts/`. This exercises the module UI against a small Foundry API stand-in, not a live world.
+`npm ci` installs development-only Handlebars for template verification. Foundry provides Handlebars at runtime; the installed module has no additional runtime dependency. `npm run build` runs both checks and writes the release archive to `dist/ftags-<version>.zip`.
 
-The Node suite covers automatic search, numeric CR and fractions, bilingual category aliases, include/exclude combinations, legacy imports, shape persistence, preset idempotence, and read-only compendium indexing with failure recovery. Validation checks JavaScript syntax, manifest asset paths, translation references and English/Russian localization parity. Live Foundry verification is a separate manual step; this workspace does not include the older Foundry validation harness.
+The Node suite (`tests/`) covers automatic search, numeric CR and fractions, bilingual aliases and partial words, include/exclude combinations, dictionary repair and imports, preset idempotence, tag deletion with locked or unreadable compendiums, folder propagation, compendium index sync, and a module-load smoke test against a small Foundry stand-in. Validation (`tools/validate.mjs`) checks JavaScript syntax, manifest asset paths, templates, translation references, unused keys, English/Russian parity and release metadata. Live Foundry verification is a separate manual step.
 
 ### Manual Foundry 14.367 matrix
 
@@ -134,7 +134,7 @@ Repeat the core flow for Actor, Item, Scene, JournalEntry, RollTable, Cards, Pla
 12. Delete a tag; verify confirmation, global cleanup across world and unlocked compendiums, and stale Spotlight-filter removal.
 13. Assign a Spotlight key, search by object name, tag name, and `#tag`, then open results with mouse and keyboard.
 14. Verify include/exclude, ANY/ALL, object types, sorting and reset; Spotlight remains unavailable to a player.
-15. Verify Spotlight result tags remain readable with bright, dark, long, and four-tag examples at normal and narrow window widths.
+15. Verify Spotlight result tags remain readable with bright, dark, long, and four-tag examples at normal width and after resizing the Spotlight window below 560px.
 
 ## Русское описание
 

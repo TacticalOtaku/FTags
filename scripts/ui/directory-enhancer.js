@@ -8,15 +8,14 @@ import {
 } from "../constants.js";
 import {partitionVisibleTags} from "../core/model.js";
 import {tagRepository} from "../runtime.js";
+import {asElement} from "./app-utils.js";
 import {notifyError} from "./notifications.js";
 import {openTagManager} from "./tag-manager.js";
 import {openSpotlight} from "./spotlight.js";
 
 export function registerDirectoryHooks() {
+  // Compendium pack windows extend DocumentDirectory, so this hook already covers them.
   Hooks.on("renderDocumentDirectory", (application, element) => {
-    void enhanceDirectory(application, element).catch((error) => notifyError(error));
-  });
-  Hooks.on("renderCompendium", (application, element) => {
     void enhanceDirectory(application, element).catch((error) => notifyError(error));
   });
   Hooks.on("renderCompendiumDirectory", (application, element) => {
@@ -32,12 +31,11 @@ export async function enhanceDirectory(application, element) {
     ?? application?.metadata?.type;
   if (!SUPPORTED_DOCUMENT_TYPES.includes(documentName)) return;
 
-  const dictionary = tagRepository.getDictionary();
+  const tagsById = new Map(tagRepository.getDictionary().tags.map((tag) => [tag.id, tag]));
 
   root.querySelectorAll(".ftags-row-tags, .ftags-directory-toolbar").forEach((node) => node.remove());
-  root.querySelectorAll(".ftags-filtered-out").forEach((node) => node.classList.remove("ftags-filtered-out"));
   const rows = collectRows(root, application, documentName);
-  for (const record of rows) injectRowTags(record, dictionary, documentName);
+  for (const record of rows) injectRowTags(record, tagsById, documentName);
   injectToolbar(root, application);
 }
 
@@ -48,21 +46,20 @@ export async function enhanceCompendiumDirectory(application, element) {
   injectToolbar(root, application);
 }
 
-export function renderSupportedDirectories() {
+/**
+ * Re-render open directories (sidebar tabs, their popouts and compendium pack windows) that list
+ * one of the given document types, or every supported type when none are given.
+ */
+export function renderSupportedDirectories(documentNames = null) {
   if (!game.user?.isGM) return;
-  for (const documentName of SUPPORTED_DOCUMENT_TYPES) {
-    tagRepository.getWorldCollection(documentName)?.render?.(false, {renderContext: "ftags"});
-  }
-  ui.compendium?.render?.(false, {renderContext: "ftags"});
-  for (const pack of tagRepository.getCompendiumPacks()) {
-    const apps = pack.apps instanceof Map
-      ? pack.apps.values()
-      : (Array.isArray(pack.apps) ? pack.apps : Object.values(pack.apps ?? {}));
-    for (const app of apps) {
-      if (app?.rendered) {
-        void app.render(false, {renderContext: "ftags"});
-      }
-    }
+  const registry = foundry.applications?.instances;
+  if (!registry) return;
+  for (const app of registry.values()) {
+    const documentName = app?.documentName ?? app?.collection?.documentName;
+    if (!app?.rendered || !app.collection || !SUPPORTED_DOCUMENT_TYPES.includes(documentName)) continue;
+    if (documentNames && !documentNames.has(documentName)) continue;
+    if (!app.element?.querySelector?.(DIRECTORY_LIST_SELECTOR)) continue;
+    void app.render();
   }
 }
 
@@ -92,10 +89,10 @@ function collectRows(root, application, documentName) {
   return records;
 }
 
-function injectRowTags(record, dictionary, documentName) {
+function injectRowTags(record, tagsById, documentName) {
   if (record.isFolder && record.document.type !== documentName) return;
   const assignment = tagRepository.getTagIds(record.document);
-  const {visible, hidden} = partitionVisibleTags(assignment, dictionary, MAX_VISIBLE_TAGS);
+  const {visible, hidden} = partitionVisibleTags(assignment, tagsById, MAX_VISIBLE_TAGS);
   if (!visible.length && !hidden.length) return;
 
   const container = document.createElement("span");
@@ -120,9 +117,11 @@ function injectRowTags(record, dictionary, documentName) {
     container.append(overflow);
   }
 
-  const nameElement = record.row.querySelector(DIRECTORY_NAME_SELECTOR);
+  // Folder rows and playlists nest child lists, so only a name that belongs to this row counts.
+  const nameElement = [...record.row.querySelectorAll(DIRECTORY_NAME_SELECTOR)]
+    .find((candidate) => candidate.closest(record.isFolder ? FOLDER_ROW_SELECTOR : ENTRY_ROW_SELECTOR) === record.row);
   if (nameElement?.parentElement) nameElement.insertAdjacentElement("afterend", container);
-  else record.row.append(container);
+  else (record.row.querySelector(":scope > header") ?? record.row).append(container);
 }
 
 function injectToolbar(root, application) {
@@ -197,9 +196,4 @@ function buildColorSegments(tags) {
     return [`${tag.color} ${start}%`, `${tag.color} ${end}%`];
   });
   return `linear-gradient(to right, ${stops.join(", ")})`;
-}
-
-function asElement(value) {
-  if (value instanceof HTMLElement) return value;
-  return value?.[0] instanceof HTMLElement ? value[0] : null;
 }

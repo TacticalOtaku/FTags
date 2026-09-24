@@ -8,11 +8,11 @@
     </label>
     <label class="ftags-manager__color">
       <span>{{localize "FTAGS.Manager.Color"}}</span>
-      <input type="color" name="newColor" value="#6F8FAF">
+      <input type="color" name="newColor" value="{{newColor}}">
     </label>
     <label>
       <span>{{localize "FTAGS.Manager.Shape"}}</span>
-      <select name="newShape">{{#each shapes}}<option value="{{value}}">{{label}}</option>{{/each}}</select>
+      <select name="newShape">{{#each shapes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
     </label>
     <button type="button" class="bright" data-action="create">
       <i class="fa-solid fa-plus" aria-hidden="true"></i>

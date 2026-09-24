@@ -2,7 +2,7 @@
   <p class="hint">{{localize "FTAGS.Assignment.Intro" name=targetName}}</p>
 
   {{#if isLocked}}
-    <p class="notification warning" style="margin: 0; padding: 6px 10px; border-radius: 3px; font-size: 0.75rem; background: rgba(220, 120, 20, 0.2); border: 1px solid rgba(220, 120, 20, 0.4);">
+    <p class="ftags-assignment__locked">
       <i class="fa-solid fa-lock" aria-hidden="true"></i>
       {{localize "FTAGS.Assignment.LockedPack"}}
     </p>
@@ -24,7 +24,7 @@
 
   {{#if isFolder}}
     <label class="ftags-folder-propagation">
-      <input type="checkbox" name="applyToContents" {{disabled hasNoFolderContents}} {{#if isLocked}}disabled{{/if}}>
+      <input type="checkbox" name="applyToContents" {{checked applyToContents}} {{#if isLocked}}disabled{{else}}{{disabled hasNoFolderContents}}{{/if}}>
       <span>
         <strong>{{localize "FTAGS.Assignment.ApplyFolder"}}</strong>
         <small>{{localize "FTAGS.Assignment.ApplyFolderHint" count=folderContentCount}}</small>

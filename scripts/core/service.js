@@ -8,7 +8,6 @@ import {
 } from "../constants.js";
 import {
   TagValidationError,
-  collectSubfolderIds,
   createTagId,
   mergeDictionaries,
   normalizeSpotlightFilterState,
@@ -16,12 +15,13 @@ import {
   normalizeTagName,
   sanitizeTagIds,
   sortTags,
+  tagNameKey,
   validateDictionaryPayload,
   validateTagDraft
 } from "./model.js";
-import {buildSpotlightIndex, searchSpotlightIndex} from "./search.js";
+import {buildSpotlightIndex, searchSpotlightIndexWithTotal} from "./search.js";
 import {getAutomaticTags, getAutomaticTagLibrary} from "./automatic-tags.js";
-import {getPresetTags} from "./presets.js";
+import {getPresetTags, isPresetInstance} from "./presets.js";
 
 export class TagService {
   constructor(repository) {
@@ -40,11 +40,13 @@ export class TagService {
     this.repository.assertGM();
     const dictionary = this.repository.getDictionary();
     let created = 0;
-    for (const {aliases, ...tag} of getPresetTags(id)) {
-      if (dictionary.tags.some(existing => existing.id === tag.id || aliases.some(name => (
-        existing.name.localeCompare(name, undefined, {sensitivity: "base"}) === 0
-      )))) continue;
-      dictionary.tags.push(validateTagDraft(tag, dictionary.tags));
+    for (const {aliases, baseId, ...tag} of getPresetTags(id)) {
+      const aliasKeys = new Set(aliases.map(tagNameKey));
+      if (dictionary.tags.some(existing => (
+        isPresetInstance(existing.id, baseId) || aliasKeys.has(tagNameKey(existing.name))
+      ))) continue;
+      const suffix = createTagId().replace(/[^A-Za-z0-9]/g, "").slice(0, 8);
+      dictionary.tags.push(validateTagDraft({...tag, id: `${baseId}-${suffix}`}, dictionary.tags));
       created++;
     }
     if (dictionary.tags.length > MAX_TAG_COUNT) throw new TagValidationError("too-many-tags", {max: MAX_TAG_COUNT});
@@ -88,44 +90,46 @@ export class TagService {
     this.repository.assertGM();
     const dictionary = this.repository.getDictionary();
     const tag = dictionary.tags.find((candidate) => candidate.id === tagId);
-    if (!tag) return {tag: null, deleted: false, cleaned: 0, failed: 0, errors: []};
+    if (!tag) return {tag: null, deleted: false, cleaned: 0, failed: 0, errors: [], lockedPacks: []};
 
-    const targets = this.repository.getAllTaggableObjects().filter((document) => (
-      this.repository.getTagIds(document).includes(tagId)
-    ));
+    const carriesTag = (document) => this.repository.getTagIds(document).includes(tagId);
+    const targets = this.repository.getAllTaggableObjects().filter(carriesTag);
+    const lockedPacks = [];
+    const loadErrors = [];
 
+    await this.repository.prepareCompendiumIndexes?.();
     for (const pack of this.repository.getCompendiumPacks()) {
-      if (pack.locked) continue;
-      for (const folder of pack.folders ?? []) {
-        if (this.repository.getTagIds(folder).includes(tagId)) {
-          targets.push(folder);
-        }
+      const folders = [...(pack.folders ?? [])].filter(carriesTag);
+      const ids = [...(pack.index ?? [])].filter(carriesTag).map((entry) => entry._id);
+      if (!folders.length && !ids.length) continue;
+      if (pack.locked) {
+        lockedPacks.push(pack.title ?? pack.collection);
+        continue;
       }
-      if (pack.index) {
-        for (const entry of pack.index) {
-          const rawTags = this.repository.getTagIds(entry);
-          if (rawTags.includes(tagId)) {
-            try {
-              const doc = await pack.getDocument(entry._id);
-              if (doc) targets.push(doc);
-            } catch (error) {
-              console.warn(`FTags: Could not load document ${entry._id} from pack ${pack.collection}`, error);
-            }
-          }
-        }
+      targets.push(...folders);
+      if (!ids.length) continue;
+      try {
+        targets.push(...await pack.getDocuments({_id__in: ids}));
+      } catch (error) {
+        loadErrors.push({item: pack.collection, error});
       }
+    }
+
+    // A document that cannot even be loaded would keep the id, so it aborts like a failed write.
+    if (loadErrors.length) {
+      return {tag, deleted: false, cleaned: 0, failed: loadErrors.length, errors: loadErrors, lockedPacks};
     }
 
     const result = await runWithConcurrency(targets, BULK_CONCURRENCY, async (document) => {
       const next = this.repository.getTagIds(document).filter((id) => id !== tagId);
       await this.repository.setTagIds(document, next);
     });
-    if (result.failed) return {...result, tag, deleted: false, cleaned: result.success};
+    if (result.failed) return {...result, tag, deleted: false, cleaned: result.success, lockedPacks};
 
     dictionary.tags = dictionary.tags.filter((candidate) => candidate.id !== tagId);
     await this.repository.setDictionary(dictionary);
     await this.repository.cleanSpotlightFilters?.(new Set(this.listSearchTags().map((candidate) => candidate.id)));
-    return {tag, deleted: true, cleaned: result.success, failed: 0, errors: []};
+    return {tag, deleted: true, cleaned: result.success, failed: 0, errors: [], lockedPacks};
   }
 
   getAssignments(document) {
@@ -145,29 +149,28 @@ export class TagService {
     return this.repository.getFolderDocuments(folder).length;
   }
 
-  async applyTagsToFolderContents(folder, tagIds) {
+  /**
+   * Load every document in a folder tree. Compendium documents are fetched in one request, and
+   * any failure surfaces before a single write happens.
+   */
+  async resolveFolderContents(folder) {
     this.repository.assertGM();
-    if (folder.pack && game.packs?.get(folder.pack)?.locked) {
-      const error = new Error("locked-compendium");
-      error.code = "locked-compendium";
-      throw error;
-    }
+    const documents = this.repository.getFolderDocuments(folder);
+    if (!folder?.pack) return documents;
+    this.repository.assertPackUnlocked(folder.pack);
+    const pack = this.repository.getPack(folder.pack);
+    const ids = documents.map((entry) => entry._id ?? entry.id).filter(Boolean);
+    if (!pack || !ids.length) return [];
+    return pack.getDocuments({_id__in: ids});
+  }
 
+  async applyTagsToDocuments(documents, tagIds) {
+    this.repository.assertGM();
     const valid = new Set(this.listTags().map((tag) => tag.id));
     const additions = sanitizeTagIds(tagIds, valid);
     if (!additions.length) return {success: 0, failed: 0, errors: []};
 
-    let targets = this.repository.getFolderDocuments(folder);
-    if (folder.pack && (!targets.length || !targets[0]?.setFlag)) {
-      const pack = game.packs?.get(folder.pack);
-      if (pack) {
-        const folderIds = new Set([folder.id, ...collectSubfolderIds(folder)]);
-        const entries = (pack.index ?? []).filter((e) => folderIds.has(e.folder));
-        targets = (await Promise.all(entries.map((e) => pack.getDocument(e._id)))).filter(Boolean);
-      }
-    }
-
-    const eligible = targets.filter((document) => {
+    const eligible = documents.filter((document) => {
       const current = new Set(this.repository.getTagIds(document));
       return additions.some((tagId) => !current.has(tagId));
     });
@@ -176,6 +179,10 @@ export class TagService {
       const next = sanitizeTagIds([...this.repository.getTagIds(document), ...additions], valid);
       await this.repository.setTagIds(document, next);
     });
+  }
+
+  async applyTagsToFolderContents(folder, tagIds) {
+    return this.applyTagsToDocuments(await this.resolveFolderContents(folder), tagIds);
   }
 
   buildSpotlightIndex() {
@@ -254,18 +261,18 @@ export class TagService {
     return buildSpotlightIndex(records);
   }
 
+  /** @returns {{records: object[], total: number}} */
   searchSpotlight(index, query, options) {
-    return searchSpotlightIndex(index, query, options);
+    return searchSpotlightIndexWithTotal(index, query, options);
   }
 
-  async getSpotlightFilters() {
-    const valid = new Set(this.listSearchTags().map((tag) => tag.id));
-    const current = this.repository.getSpotlightFilterState();
-    const cleaned = normalizeSpotlightFilterState(current, valid);
-    if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
-      await this.repository.setSpotlightFilterState(cleaned);
-    }
-    return cleaned;
+  /** Current filters limited to existing tags. Reading never writes; cleanup happens on change. */
+  readSpotlightFilters() {
+    return this.normalizeSpotlightFilters(this.repository.getSpotlightFilterState());
+  }
+
+  normalizeSpotlightFilters(state) {
+    return normalizeSpotlightFilterState(state, new Set(this.listSearchTags().map((tag) => tag.id)));
   }
 
   async setSpotlightFilters(state) {
