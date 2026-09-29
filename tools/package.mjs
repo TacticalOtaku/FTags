@@ -38,6 +38,11 @@ const zip = createZip(await Promise.all(files.map(async (name) => ({ name, data:
 const out = join(root, "dist");
 await mkdir(out, { recursive: true });
 const target = join(out, archiveName(manifest.id, manifest.version));
+// A released archive is a record of what users downloaded: never replace it by accident.
+if (existsSync(target) && !process.argv.includes("--force")) {
+  console.error(`${target} already exists. Bump the version, or pass --force to replace an unreleased archive.`);
+  process.exit(1);
+}
 await writeFile(target, zip);
 
 console.log(`Packaged ${manifest.id} ${manifest.version}: ${files.length} files, ${(zip.length / 1024).toFixed(1)} KiB`);
