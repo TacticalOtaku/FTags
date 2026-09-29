@@ -1,0 +1,44 @@
+<section class="ftags-spotlight__results">
+  {{#if hasResults}}
+    <div class="ftags-spotlight__list" role="listbox" aria-label="{{localize 'FTAGS.Spotlight.ResultsLabel'}}">
+      {{#each results}}
+        <button
+          type="button"
+          class="ftags-spotlight__result{{#if selected}} is-selected{{/if}}"
+          role="option"
+          aria-selected="{{selected}}"
+          aria-label="{{openLabel}}"
+          id="{{resultId}}"
+          data-action="openResult"
+          data-uuid="{{uuid}}"
+          data-ftags-result
+        >
+          <i class="{{icon}} ftags-spotlight__result-icon" aria-hidden="true"></i>
+          <span class="ftags-spotlight__result-copy">
+            <strong>{{name}}</strong>
+            <small>{{metadata}}</small>
+          </span>
+          <span class="ftags-spotlight__result-tags" aria-hidden="true">
+            {{#each tags}}
+              <span class="ftags-chip" style="--ftags-tag-color: {{color}}; --ftags-chip-background: {{background}}; --ftags-chip-border: {{border}}; --ftags-tag-foreground: {{foreground}};" title="{{name}}"><span class="ftags-chip__shape" data-ftags-shape="{{shape}}"></span><span class="ftags-chip__name">{{name}}</span></span>
+            {{/each}}
+          </span>
+        </button>
+      {{/each}}
+    </div>
+    <footer class="ftags-spotlight__footer" aria-live="polite">
+      <span>{{resultCountLabel}}</span>
+      <span>{{localize "FTAGS.Spotlight.Help"}}</span>
+    </footer>
+  {{else}}
+    <p class="ftags-empty" aria-live="polite">
+      {{#if hasNoTypes}}
+        {{localize "FTAGS.Spotlight.NoObjectTypes"}}
+      {{else if hasIndex}}
+        {{localize "FTAGS.Spotlight.NoResults"}}
+      {{else}}
+        {{localize "FTAGS.Spotlight.Empty"}}
+      {{/if}}
+    </p>
+  {{/if}}
+</section>
