@@ -1,17 +1,12 @@
 import {normalizeSpotlightFilterState} from "./model.js";
 import {getAutomaticTagLibrary, parseCR} from "./automatic-tags.js";
 
-// Strip diacritics, except the breve that turns Cyrillic "и" into the distinct letter "й".
-const COMBINING_MARKS = /(?<![иИ])[̀-ͯ]|(?<=[иИ])[̀-̅̇-ͯ]/g;
-// Partial words shorter than this never match automatic values, so "cr" or "по" stay neutral.
-const MIN_AUTOMATIC_PREFIX = 3;
-const collator = new Intl.Collator();
+const COMBINING_MARKS = /[\u0300-\u036f]/g;
 
 export function foldSearchText(value) {
   return String(value ?? "")
     .normalize("NFKD")
     .replace(COMBINING_MARKS, "")
-    .normalize("NFC")
     .toLocaleLowerCase()
     .replace(/\s+/g, " ")
     .trim();
@@ -30,24 +25,19 @@ export function buildSpotlightIndex(records) {
     }));
 }
 
-export function searchSpotlightIndex(index, query, options = {}) {
-  return searchSpotlightIndexWithTotal(index, query, options).records;
-}
-
-/** Search and also report how many records matched before the result limit was applied. */
-export function searchSpotlightIndexWithTotal(index, query, {limit = 100, filters = null} = {}) {
+export function searchSpotlightIndex(index, query, {limit = 100, filters = null} = {}) {
   const tokens = tokenizeQuery(query);
   const safeLimit = Math.max(0, Number.isFinite(limit) ? Math.trunc(limit) : 100);
   const cleanFilters = normalizeSpotlightFilterState(filters);
   const matches = [];
 
   for (const record of index ?? []) {
+    if (!matchesSpotlightFilters(record, cleanFilters)) continue;
     const search = record?._spotlight ?? {
       order: matches.length,
       name: foldSearchText(record?.name),
       ...searchTagData(record?.tags ?? [])
     };
-    if (!matchesNormalizedFilters(record, search.tagIds, cleanFilters)) continue;
     let score = 0;
     let matched = true;
 
@@ -62,21 +52,18 @@ export function searchSpotlightIndexWithTotal(index, query, {limit = 100, filter
     if (matched) matches.push({record, score, search});
   }
 
-  const records = matches
+  return matches
     .sort((left, right) => compareMatches(left, right, cleanFilters.sortBy))
     .slice(0, safeLimit)
     .map(({record}) => record);
-  return {records, total: matches.length};
 }
 
 export function matchesSpotlightFilters(record, rawFilters) {
-  const tagIds = new Set((record?.tags ?? []).map((tag) => tag?.id).filter(Boolean));
-  return matchesNormalizedFilters(record, tagIds, normalizeSpotlightFilterState(rawFilters));
-}
-
-function matchesNormalizedFilters(record, tagIds, filters) {
+  const filters = normalizeSpotlightFilterState(rawFilters);
   const documentType = record?.documentName ?? (record?.isFolder ? "Folder" : record?.entityType);
   if (!filters.documentTypes.includes(documentType)) return false;
+
+  const tagIds = new Set((record?.tags ?? []).map((tag) => tag?.id).filter(Boolean));
   if (filters.excludeTagIds.some((id) => tagIds.has(id))) return false;
   if (!filters.includeTagIds.length) return true;
   return filters.matchMode === "all"
@@ -85,12 +72,11 @@ function matchesNormalizedFilters(record, tagIds, filters) {
 }
 
 function compareMatches(left, right, sortBy) {
-  const byName = () => collator.compare(left.search.name, right.search.name);
-  const byType = () => collator.compare(getResultType(left.record), getResultType(right.record));
-  const byOrder = () => left.search.order - right.search.order;
-  if (sortBy === "name") return byName() || byType() || byOrder();
-  if (sortBy === "type") return byType() || byName() || byOrder();
-  return left.score - right.score || byName() || byType() || byOrder();
+  const byName = left.search.name.localeCompare(right.search.name);
+  const byType = getResultType(left.record).localeCompare(getResultType(right.record));
+  if (sortBy === "name") return byName || byType || left.search.order - right.search.order;
+  if (sortBy === "type") return byType || byName || left.search.order - right.search.order;
+  return left.score - right.score || byName || byType || left.search.order - right.search.order;
 }
 
 /**
@@ -107,7 +93,7 @@ function tokenizeQuery(query) {
   let remaining = String(query ?? "").replace(/\s+/g, " ").trim();
   const automaticLibrary = getAutomaticTagLibrary();
   const phrases = automaticLibrary.flatMap(tag => tag.aliases
-    .filter(alias => tag.facet !== "cr")
+    .filter(() => tag.facet !== "cr")
     .flatMap(alias => tag.facet === "rarity" ? [alias, `${alias} редкости`] : [alias]))
     .filter(alias => alias.includes(" "))
     .sort((a, b) => b.length - a.length);
@@ -145,22 +131,15 @@ function scoreToken(search, token) {
     return matches ? 0 : null;
   }
   const candidates = [];
-  const base = token.tagOnly ? 0 : 40;
   if (!token.tagOnly) candidates.push(scoreValue(search.name, token.value, 0));
-  for (const tag of search.tags) candidates.push(scoreValue(tag, token.value, base));
-  // Automatic values match whole, or by their beginning while a word is still being typed;
-  // "rare" therefore never matches "very rare" or "uncommon".
-  if (search.automatic?.includes(token.value)) candidates.push(base);
-  else if (token.value.length >= MIN_AUTOMATIC_PREFIX && search.automatic?.some((alias) => alias.startsWith(token.value))) {
-    candidates.push(base + 10);
-  }
+  for (const tag of search.tags) candidates.push(scoreValue(tag, token.value, token.tagOnly ? 0 : 40));
+  if (search.automatic?.includes(token.value)) candidates.push(token.tagOnly ? 0 : 40);
   const valid = candidates.filter((score) => score !== null);
   return valid.length ? Math.min(...valid) : null;
 }
 
 function searchTagData(tags) {
   return {
-    tagIds: new Set(tags.map((tag) => tag?.id).filter(Boolean)),
     tags: tags.filter(tag => !tag.automatic).map(tag => foldSearchText(tag.name)).filter(Boolean),
     automatic: tags.filter(tag => tag.automatic).flatMap(tag => tag.aliases.flatMap(alias => (
       tag.facet === "rarity" ? [foldSearchText(alias), foldSearchText(`${alias} редкости`)] : [foldSearchText(alias)]

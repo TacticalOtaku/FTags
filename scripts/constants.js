@@ -83,7 +83,6 @@ export const DIRECTORY_NAME_SELECTOR = [
   ".folder-header h4",
   ".entry-name",
   ".document-name",
-  ".playlist-name",
   "h4.entry-name",
   "a.entry-name"
 ].join(",");
