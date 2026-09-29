@@ -9,8 +9,8 @@ map is in `docs/architecture.md`.
 - `npm run deploy` — copies the module to `%LOCALAPPDATA%/FoundryVTT/Data/modules/ftags`
   (or `FOUNDRY_DATA` / `--data <path>`, the Foundry `Data` folder).
 - `npm run release` — check + `tools/package.mjs`: validates module.json against package.json and writes
-  `dist/ftags-v<version>.zip`; it refuses to replace an existing archive. From the next version on, tags are
-  `v<version>` and `download` in module.json must use that form (1.3.0 was published without the `v`).
+  `dist/ftags-v<version>.zip`; it refuses to replace an existing archive. Since 1.4.0 tags are `v<version>` and
+  `download` in module.json must use that form (1.3.0 and earlier were published without the `v`).
 
 ## Foundry API truth
 
