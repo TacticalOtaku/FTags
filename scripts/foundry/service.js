@@ -18,11 +18,11 @@ import {
   sortTags,
   validateDictionaryPayload,
   validateTagDraft
-} from "./model.js";
-import {buildSpotlightIndex, searchSpotlightIndex} from "./search.js";
-import {getAutomaticTags, getAutomaticTagLibrary} from "./automatic-tags.js";
-import {getPresetTags} from "./presets.js";
-import {log} from "./logger.js";
+} from "../core/model.js";
+import {buildSpotlightIndex, searchSpotlightIndex} from "../core/search.js";
+import {getAutomaticTags, getAutomaticTagLibrary} from "../core/automatic-tags.js";
+import {getPresetTags} from "../core/presets.js";
+import {log} from "../core/logger.js";
 
 export class TagService {
   constructor(repository) {

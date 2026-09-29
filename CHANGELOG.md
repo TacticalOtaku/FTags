@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Debug logging** client setting: detailed diagnostics in the browser console, off by default.
+
+### Changed
+
+- Localisation files are nested under `FTAGS`; the keys themselves are unchanged. Translations maintained outside this repository need the same structure.
+
+### Development
+
+- `repository.js` and `service.js` moved from `scripts/core/` to `scripts/foundry/`, so `core/` holds only Foundry-free logic. See `docs/architecture.md`.
+- One logger (`scripts/core/logger.js`) replaces direct console calls.
+- ESLint and Prettier; `npm run check`, `deploy`, `package` and `release` as in the other TacticalOtaku modules; the archive goes to `dist/`. Releases use `v`-prefixed tags from the next version on.
+- Project rules in `CLAUDE.md`.
+
 ## 1.3.0
 
 ### Added
