@@ -1,0 +1,60 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><title>FTags UI verification harness</title>
+<link rel="stylesheet" href="/styles/ftags.css">
+<style>
+body { background:#181b22;color:#eee;font:14px system-ui;padding:25px; }
+.test-window { background:#292e3a;border:1px solid #555;margin:10px auto;padding:12px;box-sizing:border-box;max-width:100%; }
+input,select,button {font:inherit;color:inherit;background:#363d4b;border:1px solid #647084;border-radius:4px;padding:5px;box-sizing:border-box;min-width:0;}
+button {cursor:pointer;} input[type=color] {padding:1px;} label span {display:inline-block;}
+summary {padding:6px 0;} small {font-weight:normal;} .hint {color:#bdc5d3;}
+</style><main id="mount"></main>
+<script src="/node_modules/handlebars/dist/handlebars.js"></script>
+<script type="module">
+const translations = await (await fetch('/lang/ru.json')).json();
+const settings = new Map();
+const getProperty = (object, path) => path.split('.').reduce((o,k) => o?.[k],object);
+const actor = {id:'skeleton',uuid:'Actor.skeleton',name:'Скелет',documentName:'Actor',type:'npc',system:{details:{cr:3,type:{value:'undead'}}}};
+window.game = {user:{isGM:true},system:{id:'dnd5e'},i18n:{lang:'ru',localize:k=>translations[k]??k,format:(k,args)=>Object.entries(args).reduce((s,[key,value])=>s.replaceAll(`{${key}}`,value),translations[k]??k)},actors:[actor],packs:[],folders:[],settings:{get:(_s,k)=>settings.get(k),set:async(_s,k,v)=>{settings.set(k,v);}}};
+window.CONFIG = {Actor:{sidebarIcon:'actor'},Item:{sidebarIcon:'item'}};
+window.ui = {notifications:{info:()=>{},warn:console.warn,error:message=>{throw new Error(message);}}};
+class ApplicationV2 {
+  static instances(){return [];}
+  constructor(){this.rendered=false;this.parts={};}
+  _canRender(){return true;}
+  async _prepareContext(){return {};}
+  async _onRender(){}
+  async _preClose(){}
+  setPosition(){}
+  async close(){await this._preClose({});this.element?.remove();this.rendered=false;}
+  async render(){
+    if (!this._canRender({})) return;
+    const context=await this._prepareContext({});
+    this.element??=document.createElement('section');
+    this.element.className='test-window '+(this.constructor.DEFAULT_OPTIONS.classes??[]).join(' ');
+    this.element.style.width=(this.constructor.DEFAULT_OPTIONS.position?.width??560)+'px';
+    this.element.replaceChildren();
+    for(const [key,{template}] of Object.entries(this.constructor.PARTS)){
+      const part=document.createElement('div');
+      part.innerHTML=Handlebars.compile(await(await fetch('/'+template.replace('modules/ftags/',''))).text())(context);
+      this.parts[key]=part; this.element.append(part);
+    }
+    document.querySelector('#mount').append(this.element);
+    this.rendered=true;
+    this.element.onclick=async event=>{
+      const target=event.target.closest('[data-action]');
+      if(target)await this.constructor.DEFAULT_OPTIONS.actions?.[target.dataset.action]?.call(this,event,target);
+    };
+    await this._onRender(context,{}); return this;
+  }
+}
+window.foundry={applications:{api:{ApplicationV2,HandlebarsApplicationMixin:Base=>Base,DialogV2:{}}},utils:{getProperty,escapeHTML:s=>Handlebars.escapeExpression(s)}};
+Handlebars.registerHelper('localize',(key,options)=>game.i18n.format(key,options.hash));
+Handlebars.registerHelper('disabled',value=>value?'disabled':'');
+Handlebars.registerHelper('checked',value=>value?'checked':'');
+const {tagService}=await import('/scripts/runtime.js');
+const {TagManagerApp}=await import('/scripts/ui/tag-manager.js');
+const {SpotlightApp}=await import('/scripts/ui/spotlight.js');
+const {TagAssignmentApp}=await import('/scripts/ui/tag-assignment.js');
+window.harness={tagService,manager:new TagManagerApp(),spotlight:new SpotlightApp(),assignment:new TagAssignmentApp(actor),actor};
+await harness.manager.render();
+window.ready=true;
+</script></html>

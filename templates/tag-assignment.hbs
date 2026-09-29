@@ -1,0 +1,45 @@
+<div class="ftags-assignment">
+  <p class="hint">{{localize "FTAGS.Assignment.Intro" name=targetName}}</p>
+
+  {{#if isLocked}}
+    <p class="notification warning" style="margin: 0; padding: 6px 10px; border-radius: 3px; font-size: 0.75rem; background: rgba(220, 120, 20, 0.2); border: 1px solid rgba(220, 120, 20, 0.4);">
+      <i class="fa-solid fa-lock" aria-hidden="true"></i>
+      {{localize "FTAGS.Assignment.LockedPack"}}
+    </p>
+  {{/if}}
+
+  {{#if hasTags}}
+    <div class="ftags-assignment__list" role="group" aria-label="{{localize 'FTAGS.Assignment.Title'}}">
+      {{#each tags}}
+        <label class="ftags-assignment__option">
+          <input type="checkbox" name="tagIds" value="{{id}}" {{checked assigned}} {{#if ../isLocked}}disabled{{/if}}>
+          <span class="ftags-color-swatch" data-ftags-shape="{{shape}}" style="--ftags-tag-color: {{color}};"></span>
+          <span class="ftags-assignment__name">{{name}}</span>
+        </label>
+      {{/each}}
+    </div>
+  {{else}}
+    <p class="ftags-empty">{{localize "FTAGS.Assignment.NoTags"}}</p>
+  {{/if}}
+
+  {{#if isFolder}}
+    <label class="ftags-folder-propagation">
+      <input type="checkbox" name="applyToContents" {{disabled hasNoFolderContents}} {{#if isLocked}}disabled{{/if}}>
+      <span>
+        <strong>{{localize "FTAGS.Assignment.ApplyFolder"}}</strong>
+        <small>{{localize "FTAGS.Assignment.ApplyFolderHint" count=folderContentCount}}</small>
+      </span>
+    </label>
+  {{/if}}
+
+  <div class="ftags-dialog-actions">
+    <button type="button" data-action="manage">
+      <i class="fa-solid fa-tags" aria-hidden="true"></i>
+      {{localize "FTAGS.Assignment.Manage"}}
+    </button>
+    <button type="submit" class="bright" {{#if isLocked}}disabled{{else}}{{disabled hasNoTags}}{{/if}}>
+      <i class="fa-solid fa-check" aria-hidden="true"></i>
+      {{localize "FTAGS.Assignment.Save"}}
+    </button>
+  </div>
+</div>

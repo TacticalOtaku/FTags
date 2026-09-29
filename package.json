@@ -1,0 +1,15 @@
+{
+  "name": "ftags",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "validate": "node tools/validate.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "handlebars": "^4.7.9"
+  }
+}
