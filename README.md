@@ -104,13 +104,16 @@ Schema 1 dictionaries remain importable; missing shapes default to circles. Auto
 
 ## Development and verification
 
-Use Node.js 20 or newer:
+Use Node.js 24 or newer:
 
 ```text
 npm ci
-npm test
-npm run validate
+npm run check    # ESLint, template/localization validation, node --test
+npm run deploy   # copy the module into %LOCALAPPDATA%/FoundryVTT/Data/modules/ftags (or FOUNDRY_DATA, --data <path>)
+npm run release  # check, then dist/ftags-v<version>.zip
 ```
+
+Releases are tagged `v<version>` and attach `ftags-v<version>.zip`, like the other TacticalOtaku modules. Version 1.3.0 was published as `1.3.0` / `ftags-1.3.0.zip` and keeps that download URL; with the next version, update `download` in `module.json` to the `v` form — `npm run release` refuses any other.
 
 `npm ci` installs development-only Handlebars for template verification. Foundry provides Handlebars at runtime; the installed module has no additional runtime dependency. The optional browser harness runs with `node tools/check-ui.mjs`; set `FTAGS_PLAYWRIGHT_PATH` to an installed Playwright package path if needed and `FTAGS_BROWSER_CHANNEL=msedge` to use an installed Edge browser. Harness screenshots go into `artifacts/`. This exercises the module UI against a small Foundry API stand-in, not a live world.
 
