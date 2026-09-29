@@ -1,5 +1,6 @@
 import {MODULE_ID} from "../constants.js";
 import {tagService} from "../runtime.js";
+import {log} from "../core/logger.js";
 import {notifyError, notifyInfo, notifyWarn} from "./notifications.js";
 import {openTagManager} from "./tag-manager.js";
 
@@ -70,7 +71,7 @@ export class TagAssignmentApp extends HandlebarsApplicationMixin(ApplicationV2) 
       if (applyToContents && this.targetDocument.documentName === "Folder") {
         const result = await tagService.applyTagsToFolderContents(this.targetDocument, tagIds);
         if (result.failed) {
-          console.error("FTags folder propagation failures", result.errors);
+          log.error("Folder propagation failures", result.errors);
           notifyWarn("FTAGS.Assignment.ApplyPartial", {success: result.success, failed: result.failed});
         } else {
           notifyInfo("FTAGS.Assignment.ApplySuccess", {count: result.success});

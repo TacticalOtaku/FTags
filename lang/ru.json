@@ -19,6 +19,8 @@
   "FTAGS.Spotlight.IndexFailed": "Не удалось проиндексировать компендиумы: {packs}. Результаты могут быть неполными. Откройте Spotlight заново для повторной попытки.",
   "FTAGS.Settings.DictionaryName": "Словарь меток",
   "FTAGS.Settings.DictionaryHint": "Общие определения меток мира, используемые FTags.",
+  "FTAGS.Settings.DebugName": "Отладочный журнал",
+  "FTAGS.Settings.DebugHint": "Писать подробную диагностику FTags в консоль браузера на этом устройстве.",
   "FTAGS.Settings.SpotlightFiltersName": "Фильтры Spotlight",
   "FTAGS.Settings.SpotlightFiltersHint": "Персональные расширенные фильтры GM для FTags Spotlight.",
   "FTAGS.Settings.ManagerName": "Управление метками",

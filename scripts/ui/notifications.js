@@ -1,4 +1,5 @@
 import {MAX_TAG_NAME_LENGTH} from "../constants.js";
+import {log} from "../core/logger.js";
 
 const ERROR_KEYS = Object.freeze({
   "gm-only": "FTAGS.Errors.GMOnly",
@@ -13,7 +14,7 @@ const ERROR_KEYS = Object.freeze({
 });
 
 export function notifyError(error, fallbackKey = "FTAGS.Errors.Generic") {
-  console.error("FTags", error);
+  log.error(error);
   const key = ERROR_KEYS[error?.code] ?? fallbackKey;
   const details = {
     ...(error?.details ?? {}),

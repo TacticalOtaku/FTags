@@ -7,6 +7,7 @@ import {openTagManager, TagManagerApp} from "./ui/tag-manager.js";
 import {notifyError} from "./ui/notifications.js";
 import {openSpotlight, registerSpotlightKeybinding, SpotlightApp} from "./ui/spotlight.js";
 import {getAutomaticIndexFields} from "./core/automatic-tags.js";
+import {setDebugLogging} from "./core/logger.js";
 
 Hooks.once("init", () => {
   for (const documentName of SUPPORTED_DOCUMENT_TYPES) {
@@ -23,6 +24,17 @@ Hooks.once("init", () => {
       }
     }
   }
+
+  game.settings.register(MODULE_ID, "debug", {
+    name: "FTAGS.Settings.DebugName",
+    hint: "FTAGS.Settings.DebugHint",
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: setDebugLogging
+  });
+  setDebugLogging(game.settings.get(MODULE_ID, "debug"));
 
   tagRepository.registerSettings({
     managerType: TagManagerApp,
