@@ -12,9 +12,9 @@ import {
   emptyDictionary,
   normalizeSpotlightFilterState,
   sanitizeTagIds
-} from "./model.js";
-import {getAutomaticIndexFields} from "./automatic-tags.js";
-import {log} from "./logger.js";
+} from "../core/model.js";
+import {getAutomaticIndexFields} from "../core/automatic-tags.js";
+import {log} from "../core/logger.js";
 
 export class TagRepository {
   async prepareCompendiumIndexes() {

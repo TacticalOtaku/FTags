@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {TagRepository} from "../scripts/core/repository.js";
-import {TagService} from "../scripts/core/service.js";
+import {TagRepository} from "../scripts/foundry/repository.js";
+import {TagService} from "../scripts/foundry/service.js";
 
 function environment(packs) {
   const settings = new Map();

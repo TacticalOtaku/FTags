@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {TagService} from "../scripts/core/service.js";
+import {TagService} from "../scripts/foundry/service.js";
 import {normalizeTag, mergeDictionaries} from "../scripts/core/model.js";
 import {getAutomaticTags} from "../scripts/core/automatic-tags.js";
 
