@@ -1,3 +1,4 @@
+/* global harness -- set on the page by tools/ui-harness.html and read inside page.evaluate */
 import {createServer} from "node:http";
 import {readFile, mkdir} from "node:fs/promises";
 import {resolve, extname, sep} from "node:path";

@@ -1,15 +1,26 @@
 {
   "name": "ftags",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "node --test",
-    "validate": "node tools/validate.mjs"
-  },
-  "engines": {
-    "node": ">=20"
+    "validate": "node tools/validate.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "check": "npm run lint && npm run validate && npm test",
+    "deploy": "node tools/deploy.mjs",
+    "package": "node tools/package.mjs",
+    "release": "npm run check && npm run package"
   },
   "devDependencies": {
-    "handlebars": "^4.7.9"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "handlebars": "^4.7.9",
+    "prettier": "^3.9.7"
   }
 }

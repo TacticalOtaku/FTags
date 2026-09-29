@@ -93,7 +93,7 @@ function tokenizeQuery(query) {
   let remaining = String(query ?? "").replace(/\s+/g, " ").trim();
   const automaticLibrary = getAutomaticTagLibrary();
   const phrases = automaticLibrary.flatMap(tag => tag.aliases
-    .filter(alias => tag.facet !== "cr")
+    .filter(() => tag.facet !== "cr")
     .flatMap(alias => tag.facet === "rarity" ? [alias, `${alias} редкости`] : [alias]))
     .filter(alias => alias.includes(" "))
     .sort((a, b) => b.length - a.length);
