@@ -22,6 +22,7 @@ import {
 import {buildSpotlightIndex, searchSpotlightIndex} from "./search.js";
 import {getAutomaticTags, getAutomaticTagLibrary} from "./automatic-tags.js";
 import {getPresetTags} from "./presets.js";
+import {log} from "./logger.js";
 
 export class TagService {
   constructor(repository) {
@@ -109,7 +110,7 @@ export class TagService {
               const doc = await pack.getDocument(entry._id);
               if (doc) targets.push(doc);
             } catch (error) {
-              console.warn(`FTags: Could not load document ${entry._id} from pack ${pack.collection}`, error);
+              log.warn(`Could not load document ${entry._id} from pack ${pack.collection}`, error);
             }
           }
         }

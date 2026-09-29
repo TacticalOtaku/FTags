@@ -19,6 +19,8 @@
   "FTAGS.Spotlight.IndexFailed": "Some compendiums could not be indexed: {packs}. Results may be incomplete. Reopen Spotlight to retry.",
   "FTAGS.Settings.DictionaryName": "Tag dictionary",
   "FTAGS.Settings.DictionaryHint": "Shared world-level definitions used by FTags.",
+  "FTAGS.Settings.DebugName": "Debug logging",
+  "FTAGS.Settings.DebugHint": "Write detailed FTags diagnostics to the browser console on this device.",
   "FTAGS.Settings.SpotlightFiltersName": "Spotlight filters",
   "FTAGS.Settings.SpotlightFiltersHint": "Per-user advanced filters used by FTags Spotlight.",
   "FTAGS.Settings.ManagerName": "Manage tags",

@@ -14,6 +14,7 @@ import {
   sanitizeTagIds
 } from "./model.js";
 import {getAutomaticIndexFields} from "./automatic-tags.js";
+import {log} from "./logger.js";
 
 export class TagRepository {
   async prepareCompendiumIndexes() {
@@ -35,7 +36,7 @@ export class TagRepository {
           await pack.getIndex({fields: [`flags.${MODULE_ID}`, "folder", ...getAutomaticIndexFields(pack.documentName)]});
         } catch (error) {
           failures.push(pack.title ?? pack.collection);
-          console.warn(`FTags: Could not index ${pack.collection}`, error);
+          log.warn(`Could not index ${pack.collection}`, error);
         }
       }
     });

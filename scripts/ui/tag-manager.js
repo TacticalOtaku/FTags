@@ -1,6 +1,7 @@
 import {MAX_TAG_NAME_LENGTH, MODULE_ID, TAG_SHAPES} from "../constants.js";
 import {getPresetTags} from "../core/presets.js";
 import {tagService} from "../runtime.js";
+import {log} from "../core/logger.js";
 import {notifyError, notifyInfo, notifyWarn} from "./notifications.js";
 
 const {ApplicationV2, DialogV2, HandlebarsApplicationMixin} = foundry.applications.api;
@@ -145,7 +146,7 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     try {
       const result = await tagService.deleteTag(tag.id);
       if (result.failed) {
-        console.error("FTags tag cleanup failures", result.errors);
+        log.error("Tag cleanup failures", result.errors);
         notifyWarn("FTAGS.Manager.DeleteAborted", {count: result.failed});
       } else {
         notifyInfo("FTAGS.Manager.DeleteSuccess", {count: result.cleaned});
