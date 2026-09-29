@@ -35,7 +35,7 @@ Author: **TacticalOtaku**.
 2. Make sure `module.json` is directly inside that `ftags` directory.
 3. Restart Foundry VTT and enable **FTags** in the world module manager.
 
-For a packaged release, extract `ftags-1.3.0.zip` into `Data/modules`; the archive should contain the top-level `ftags` directory.
+For a packaged release, extract `ftags-v1.4.0.zip` into `Data/modules`; the archive should contain the top-level `ftags` directory.
 
 ## Usage
 
@@ -113,7 +113,7 @@ npm run deploy   # copy the module into %LOCALAPPDATA%/FoundryVTT/Data/modules/f
 npm run release  # check, then dist/ftags-v<version>.zip
 ```
 
-Releases are tagged `v<version>` and attach `ftags-v<version>.zip`, like the other TacticalOtaku modules. Version 1.3.0 was published as `1.3.0` / `ftags-1.3.0.zip` and keeps that download URL; with the next version, update `download` in `module.json` to the `v` form — `npm run release` refuses any other.
+Releases are tagged `v<version>` and attach `ftags-v<version>.zip`, like the other TacticalOtaku modules. Versions up to 1.3.0 were published without the `v` (`1.3.0` / `ftags-1.3.0.zip`); since 1.4.0 `npm run release` accepts only the `v` form.
 
 `npm ci` installs development-only Handlebars for template verification. Foundry provides Handlebars at runtime; the installed module has no additional runtime dependency. The optional browser harness runs with `node tools/check-ui.mjs`; set `FTAGS_PLAYWRIGHT_PATH` to an installed Playwright package path if needed and `FTAGS_BROWSER_CHANNEL=msedge` to use an installed Edge browser. Harness screenshots go into `artifacts/`. This exercises the module UI against a small Foundry API stand-in, not a live world.
 
