@@ -9,7 +9,8 @@ summary {padding:6px 0;} small {font-weight:normal;} .hint {color:#bdc5d3;}
 </style><main id="mount"></main>
 <script src="/node_modules/handlebars/dist/handlebars.js"></script>
 <script type="module">
-const translations = await (await fetch('/lang/ru.json')).json();
+const flatten = (tree, prefix = '', into = {}) => { for (const [key, value] of Object.entries(tree)) { const path = prefix ? `${prefix}.${key}` : key; if (value && typeof value === 'object') flatten(value, path, into); else into[path] = value; } return into; };
+const translations = flatten(await (await fetch('/lang/ru.json')).json());
 const settings = new Map();
 const getProperty = (object, path) => path.split('.').reduce((o,k) => o?.[k],object);
 const actor = {id:'skeleton',uuid:'Actor.skeleton',name:'Скелет',documentName:'Actor',type:'npc',system:{details:{cr:3,type:{value:'undead'}}}};
