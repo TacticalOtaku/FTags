@@ -14,8 +14,17 @@ for (const path of sources) {
   const result = spawnSync(process.execPath, ["--check", resolve(path)], {encoding: "utf8"});
   assert.equal(result.status, 0, `${path}: ${result.stderr}`);
 }
-const en = JSON.parse(await readFile("lang/en.json", "utf8"));
-const ru = JSON.parse(await readFile("lang/ru.json", "utf8"));
+/** Nested language files read as dotted keys, the way Foundry resolves them. */
+function flatten(tree, prefix = "", into = {}) {
+  for (const [key, value] of Object.entries(tree)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (value && typeof value === "object") flatten(value, path, into);
+    else into[path] = value;
+  }
+  return into;
+}
+const en = flatten(JSON.parse(await readFile("lang/en.json", "utf8")));
+const ru = flatten(JSON.parse(await readFile("lang/ru.json", "utf8")));
 assert.deepEqual(Object.keys(en).sort(), Object.keys(ru).sort(), "Localization keys differ");
 for (const key of Object.keys(en)) {
   assert.deepEqual(en[key].match(/\{\w+\}/g)?.sort() ?? [], ru[key].match(/\{\w+\}/g)?.sort() ?? [], `Placeholder mismatch: ${key}`);
