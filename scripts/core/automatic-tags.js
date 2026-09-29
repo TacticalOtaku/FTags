@@ -35,8 +35,7 @@ export function parseCR(value) {
 }
 
 function makeTag(facet, value, ru, aliases, language) {
-  const plain = String(value).replace("veryRare", "very rare");
-  const english = facet === "cr" ? `CR ${ru}` : plain.charAt(0).toUpperCase() + plain.slice(1);
+  const english = facet === "cr" ? `CR ${ru}` : String(value).replace("veryRare", "very rare");
   return {
     id: `auto-dnd5e-${facet}-${String(value).replace(".", "_")}`,
     name: language?.startsWith("ru") ? (facet === "cr" ? `CR ${ru}` : ru) : english,
