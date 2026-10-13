@@ -48,8 +48,8 @@ export class SpotlightApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return Boolean(game.user?.isGM) && super._canRender(options);
   }
 
-  markDirty() {
-    this.index = null;
+  markDirty({index = true} = {}) {
+    if (index) this.index = null;
     this.filters = null;
   }
 

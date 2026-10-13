@@ -1,6 +1,5 @@
 {
   "FTAGS": {
-    "Name": "FTags",
     "Manager": {
       "Shape": "Shape",
       "Title": "FTags · Tag manager",
@@ -22,6 +21,7 @@
       "UpdateSuccess": "Tag updated.",
       "DeleteSuccess": "Tag removed from {count} objects.",
       "DeleteAborted": "Deletion was stopped because {count} objects could not be updated. The tag remains available; retry after resolving the errors.",
+      "DeleteIndexFailed": "Tag removed from {count} objects, but these compendiums could not be read: {packs}. It may still sit on documents inside them.",
       "ExportSuccess": "Tag dictionary exported.",
       "ImportSuccess": "Tag dictionary imported."
     },
@@ -125,7 +125,6 @@
     },
     "Common": {
       "Cancel": "Cancel",
-      "Confirm": "Confirm",
       "Save": "Save",
       "Edit": "Edit",
       "Delete": "Delete"
@@ -143,8 +142,7 @@
       "Cards": "Cards",
       "Playlist": "Playlist",
       "Macro": "Macro",
-      "Folder": "Folder",
-      "Compendium": "Compendium"
+      "Folder": "Folder"
     }
   }
 }

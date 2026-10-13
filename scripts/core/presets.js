@@ -16,6 +16,8 @@ const PRESETS = {
   ]
 };
 
+export const PRESET_IDS = Object.keys(PRESETS);
+
 export function getPresetTags(id, language = globalThis.game?.i18n?.lang) {
   if (!Object.hasOwn(PRESETS, id)) throw new Error("Unknown FTags preset");
   return PRESETS[id].map(([key, ru, en, color, shape]) => ({

@@ -167,22 +167,9 @@ export function sanitizeTagIds(values, validIds = null) {
   return ids;
 }
 
-export function matchesAnyTag(assignedIds, activeIds) {
-  const active = activeIds instanceof Set ? activeIds : new Set(activeIds ?? []);
-  if (!active.size) return true;
-  return sanitizeTagIds(assignedIds).some((id) => active.has(id));
-}
-
-export function partitionVisibleTags(assignedIds, dictionaryRaw, limit = MAX_VISIBLE_TAGS) {
-  const dictionary = coerceDictionary(dictionaryRaw);
-  const byId = new Map(dictionary.tags.map((tag) => [tag.id, tag]));
-  const resolved = sanitizeTagIds(assignedIds, new Set(byId.keys()))
-    .map((id) => byId.get(id));
-  return {
-    visible: resolved.slice(0, limit),
-    hidden: resolved.slice(limit),
-    total: resolved.length
-  };
+export function partitionVisibleTags(assignedIds, tagsById, limit = MAX_VISIBLE_TAGS) {
+  const resolved = sanitizeTagIds(assignedIds).map((id) => tagsById.get(id)).filter(Boolean);
+  return {visible: resolved.slice(0, limit), hidden: resolved.slice(limit)};
 }
 
 const CHIP_SURFACE = [36, 41, 54];
@@ -204,10 +191,6 @@ function relativeLuminance(channels) {
 
 function toHex(channels) {
   return `#${channels.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`.toUpperCase();
-}
-
-export function contrastTextColor(hex) {
-  return relativeLuminance(hexChannels(hex)) > 0.179 ? "#111111" : "#FFFFFF";
 }
 
 /**

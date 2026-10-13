@@ -32,12 +32,13 @@ export async function enhanceDirectory(application, element) {
     ?? application?.metadata?.type;
   if (!SUPPORTED_DOCUMENT_TYPES.includes(documentName)) return;
 
-  const dictionary = tagRepository.getDictionary();
+  // A compendium window never requests the module's index fields, so its index carries no tags yet.
+  if (application.collection?.indexed === false) await application.collection.getIndex();
+  const tagsById = new Map(tagRepository.getDictionary().tags.map((tag) => [tag.id, tag]));
 
   root.querySelectorAll(".ftags-row-tags, .ftags-directory-toolbar").forEach((node) => node.remove());
-  root.querySelectorAll(".ftags-filtered-out").forEach((node) => node.classList.remove("ftags-filtered-out"));
   const rows = collectRows(root, application, documentName);
-  for (const record of rows) injectRowTags(record, dictionary, documentName);
+  for (const record of rows) injectRowTags(record, tagsById, documentName);
   injectToolbar(root, application);
 }
 
@@ -92,10 +93,10 @@ function collectRows(root, application, documentName) {
   return records;
 }
 
-function injectRowTags(record, dictionary, documentName) {
+function injectRowTags(record, tagsById, documentName) {
   if (record.isFolder && record.document.type !== documentName) return;
   const assignment = tagRepository.getTagIds(record.document);
-  const {visible, hidden} = partitionVisibleTags(assignment, dictionary, MAX_VISIBLE_TAGS);
+  const {visible, hidden} = partitionVisibleTags(assignment, tagsById, MAX_VISIBLE_TAGS);
   if (!visible.length && !hidden.length) return;
 
   const container = document.createElement("span");

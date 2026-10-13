@@ -89,11 +89,15 @@ export class TagService {
     this.repository.assertGM();
     const dictionary = this.repository.getDictionary();
     const tag = dictionary.tags.find((candidate) => candidate.id === tagId);
-    if (!tag) return {tag: null, deleted: false, cleaned: 0, failed: 0, errors: []};
+    if (!tag) return {tag: null, deleted: false, cleaned: 0, failed: 0, errors: [], indexFailures: []};
 
     const targets = this.repository.getAllTaggableObjects().filter((document) => (
       this.repository.getTagIds(document).includes(tagId)
     ));
+
+    // A pack index carries no module flags until the module asks for them, so without this the
+    // tag would survive on compendium documents after it is gone from the dictionary.
+    const indexFailures = await this.repository.prepareCompendiumIndexes();
 
     for (const pack of this.repository.getCompendiumPacks()) {
       if (pack.locked) continue;
@@ -121,12 +125,12 @@ export class TagService {
       const next = this.repository.getTagIds(document).filter((id) => id !== tagId);
       await this.repository.setTagIds(document, next);
     });
-    if (result.failed) return {...result, tag, deleted: false, cleaned: result.success};
+    if (result.failed) return {...result, tag, deleted: false, cleaned: result.success, indexFailures};
 
     dictionary.tags = dictionary.tags.filter((candidate) => candidate.id !== tagId);
     await this.repository.setDictionary(dictionary);
     await this.repository.cleanSpotlightFilters?.(new Set(this.listSearchTags().map((candidate) => candidate.id)));
-    return {tag, deleted: true, cleaned: result.success, failed: 0, errors: []};
+    return {tag, deleted: true, cleaned: result.success, failed: 0, errors: [], indexFailures};
   }
 
   getAssignments(document) {

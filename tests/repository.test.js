@@ -52,3 +52,29 @@ test("player cannot load search indexes", async () => {
   game.user.isGM = false;
   await assert.rejects(new TagRepository().prepareCompendiumIndexes(), {code: "gm-only"});
 });
+
+test("deleting a tag prepares pack indexes and clears it from compendium documents", async () => {
+  const entry = {_id: "a1", name: "Skeleton", flags: {ftags: {tagIds: ["t1"]}}};
+  const document = {
+    documentName: "Actor", pack: "test.actors", id: "a1", flags: {ftags: {tagIds: ["t1"]}},
+    getFlag: () => document.flags.ftags?.tagIds,
+    async unsetFlag() {delete document.flags.ftags; return document;}
+  };
+  let indexed = false;
+  const pack = {documentName: "Actor", collection: "test.actors", title: "Actors", locked: false, index: [], folders: [],
+    async getIndex() {indexed = true; this.index = [entry];},
+    async getDocument(id) {return id === "a1" ? document : null;}
+  };
+  const packs = [pack];
+  packs.get = (collection) => packs.find((candidate) => candidate.collection === collection);
+  environment(packs);
+  const repository = new TagRepository();
+  const service = new TagService(repository);
+  await repository.setDictionary({schemaVersion: 2, tags: [{id: "t1", name: "Tag", color: "#AABBCC", shape: "circle"}]});
+
+  const result = await service.deleteTag("t1");
+  assert.ok(indexed, "the pack index must be prepared before the sweep");
+  assert.deepEqual({deleted: result.deleted, cleaned: result.cleaned, indexFailures: result.indexFailures}, {deleted: true, cleaned: 1, indexFailures: []});
+  assert.equal(document.flags.ftags, undefined);
+  assert.deepEqual(repository.getDictionary().tags, []);
+});

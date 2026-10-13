@@ -101,6 +101,7 @@ Schema 1 dictionaries remain importable; missing shapes default to circles. Auto
 - No full-text search inside document content; Spotlight searches object and tag names only.
 - No automatic folder inheritance for future documents.
 - No export of assignments, arbitrary bulk editor, external database, or cloud sync.
+- No merge when two GMs edit the dictionary at the same moment: the dictionary is one world setting, so the last write wins.
 
 ## Development and verification
 
