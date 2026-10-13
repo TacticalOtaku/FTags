@@ -3,6 +3,8 @@ import {spawnSync} from "node:child_process";
 import assert from "node:assert/strict";
 import {resolve} from "node:path";
 import Handlebars from "handlebars";
+import {TAG_SHAPES} from "../scripts/constants.js";
+import {PRESET_IDS} from "../scripts/core/presets.js";
 
 async function files(directory) {
   const entries = await readdir(directory, {withFileTypes: true});
@@ -36,6 +38,10 @@ for (const file of [...sources, ...templates]) {
   for (const [, key] of source.matchAll(/["'](FTAGS\.[A-Za-z0-9_.]+)["']/g)) {
     assert.ok(Object.hasOwn(en, key), `${file}: missing translation ${key}`);
   }
+}
+/** Keys assembled from template literals are invisible to the scan above. */
+for (const key of [...TAG_SHAPES.map(shape => `FTAGS.Shapes.${shape}`), ...PRESET_IDS.map(id => `FTAGS.Presets.${id}`)]) {
+  assert.ok(Object.hasOwn(en, key), `missing translation ${key}`);
 }
 const manifest = JSON.parse(await readFile("module.json", "utf8"));
 assert.equal(manifest.id, "ftags");

@@ -1,5 +1,4 @@
 export const MODULE_ID = "ftags";
-export const MODULE_TITLE = "FTags";
 export const SCHEMA_VERSION = 2;
 export const TAG_SHAPES = Object.freeze(["circle", "square", "diamond", "star", "triangle"]);
 export const MAX_VISIBLE_TAGS = 3;

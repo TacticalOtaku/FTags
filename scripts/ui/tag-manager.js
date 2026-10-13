@@ -1,5 +1,5 @@
 import {MAX_TAG_NAME_LENGTH, MODULE_ID, TAG_SHAPES} from "../constants.js";
-import {getPresetTags} from "../core/presets.js";
+import {getPresetTags, PRESET_IDS} from "../core/presets.js";
 import {tagService} from "../runtime.js";
 import {log} from "../core/logger.js";
 import {notifyError, notifyInfo, notifyWarn} from "./notifications.js";
@@ -46,7 +46,7 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       ...context,
       tags,
       shapes: shapeOptions(),
-      presets: ["preparation", "story", "relations"].map(id => ({
+      presets: PRESET_IDS.map(id => ({
         id, label: game.i18n.localize(`FTAGS.Presets.${id}`),
         description: getPresetTags(id).map(tag => tag.name).join(" · ")
       })),
@@ -148,6 +148,8 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       if (result.failed) {
         log.error("Tag cleanup failures", result.errors);
         notifyWarn("FTAGS.Manager.DeleteAborted", {count: result.failed});
+      } else if (result.indexFailures.length) {
+        notifyWarn("FTAGS.Manager.DeleteIndexFailed", {count: result.cleaned, packs: result.indexFailures.join(", ")});
       } else {
         notifyInfo("FTAGS.Manager.DeleteSuccess", {count: result.cleaned});
       }

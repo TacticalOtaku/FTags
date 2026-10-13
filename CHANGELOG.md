@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Deleting a tag reads the compendium indexes first, so it is cleared from unlocked compendium documents instead of surviving in their flags. Packs that could not be read are named in a warning.
+- Compendium windows show tag markers on their documents right away; the dots used to appear only after Spotlight had been opened once.
+
+### Changed
+
+- A document update invalidates the search index only when a field the index reads changes, so hit point edits no longer rebuild it. Switching a Spotlight filter no longer rebuilds it either.
+
+### Development
+
+- Tests cover the release rules in `tools/release-manifest.mjs`, and `tools/validate.mjs` also checks the localisation keys assembled from template literals.
+- Removed unused helpers, hooks Foundry never fires (`createCompendium`, `deleteCompendium`), dead CSS and three unused localisation keys.
+
 ## 1.4.0
 
 ### Added

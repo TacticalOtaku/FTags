@@ -134,19 +134,6 @@ button.ftags-tag-strip:focus-visible {
   outline-offset: 1px;
 }
 
-.ftags-chip--overflow,
-.ftags-chip--neutral {
-  --ftags-tag-color: var(--color-cool-4, #4b5568);
-  --ftags-tag-foreground: var(--color-light-1, #ffffff);
-}
-
-.ftags-chip--overflow {
-  justify-content: center;
-  padding-inline: 3px !important;
-  cursor: help;
-  opacity: 0.82;
-}
-
 .ftags-manager,
 .ftags-assignment {
   display: flex;

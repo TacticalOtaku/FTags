@@ -4,9 +4,18 @@ import assert from "node:assert/strict";
 const handlers = new Map();
 globalThis.Hooks = {on: (name, callback) => handlers.set(name, callback), once: (name, callback) => handlers.set(name, callback)};
 class ApplicationV2 {static instances() {return [];} }
+const flattenObject = (object, prefix = "") => Object.entries(object ?? {}).reduce((flat, [key, value]) => {
+  const path = prefix ? `${prefix}.${key}` : key;
+  if (value?.constructor === Object) Object.assign(flat, flattenObject(value, path));
+  else flat[path] = value;
+  return flat;
+}, {});
 globalThis.foundry = {
   applications: {api: {ApplicationV2, HandlebarsApplicationMixin: Base => Base, DialogV2: {}}},
-  utils: {hasProperty: (object, path) => path.split(".").reduce((o, key) => o?.[key], object) !== undefined}
+  utils: {
+    hasProperty: (object, path) => path.split(".").reduce((o, key) => o?.[key], object) !== undefined,
+    flattenObject
+  }
 };
 globalThis.CONFIG = {Actor: {compendiumIndexFields: new Set(["name"])}, Item: {compendiumIndexFields: ["name"]}};
 const settings = new Map();
@@ -35,6 +44,7 @@ test("document property updates invalidate open searches, including flattened ch
   assert.equal(dirtied, 4);
   assert.equal(rendered, 4);
   handlers.get("updateActor")({}, {img: "new.webp"});
+  handlers.get("updateActor")({}, {system: {attributes: {hp: {value: 3}}}});
   assert.equal(dirtied, 4);
   game.user.isGM = false;
   handlers.get("updateActor")({}, {system: {details: {cr: 5}}});

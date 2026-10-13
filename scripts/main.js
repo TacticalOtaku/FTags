@@ -39,7 +39,7 @@ Hooks.once("init", () => {
   tagRepository.registerSettings({
     managerType: TagManagerApp,
     onDataChange: (reason) => {
-      if (reason === "spotlight-filters") refreshOpenSpotlights();
+      if (reason === "spotlight-filters") refreshOpenSpotlights({index: false});
       else scheduleRefresh();
     }
   });
@@ -92,28 +92,28 @@ function refreshOpenApps() {
   }
 }
 
-function refreshOpenSpotlights() {
+function refreshOpenSpotlights(options) {
   if (!game.user?.isGM) return;
   for (const app of SpotlightApp.instances()) {
     if (!app.rendered) continue;
-    app.markDirty();
+    app.markDirty(options);
     void app.render({parts: ["results"]});
   }
 }
 
 function registerDocumentUpdateHooks() {
+  // Only the fields the search index reads may invalidate it; a hit point update must not.
+  const watched = ["name", "folder", ...new Set(
+    SUPPORTED_DOCUMENT_TYPES.flatMap((documentName) => getAutomaticIndexFields(documentName))
+  )];
   const callback = (_document, changes) => {
     if (foundry.utils.hasProperty(changes, `flags.${MODULE_ID}`)) scheduleRefresh();
-    else if (
-      foundry.utils.hasProperty(changes, "name")
-      || foundry.utils.hasProperty(changes, "folder")
-      || Object.keys(changes ?? {}).some(key => key === "type" || key === "system" || key.startsWith("system."))
-    ) refreshOpenSpotlights();
+    else if (Object.keys(foundry.utils.flattenObject(changes ?? {})).some((key) => (
+      watched.some((field) => key === field || key.startsWith(`${field}.`))
+    ))) refreshOpenSpotlights();
   };
   const lifecycleCallback = () => refreshOpenSpotlights();
   Hooks.on("updateCompendium", lifecycleCallback);
-  Hooks.on("createCompendium", lifecycleCallback);
-  Hooks.on("deleteCompendium", lifecycleCallback);
   Hooks.on("updateFolder", callback);
   Hooks.on("createFolder", lifecycleCallback);
   Hooks.on("deleteFolder", lifecycleCallback);
