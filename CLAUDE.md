@@ -33,3 +33,8 @@ Never guess v14 APIs. Read the installed client: `D:\Foundry\Foundry Virtual Tab
 
 - The manual matrix is in `README.md` ("Manual Foundry 14.367 matrix").
 - The user may be playing in world `test`: never shut down or relaunch it without asking.
+
+<!-- claude-reflect: learned rules (saved from the band; edit freely) -->
+## Learned rules
+- Не публикуй релизы на GitHub и не добавляй себя в контрибуторы: релизы выкладывает пользователь сам.
+<!-- end claude-reflect -->
