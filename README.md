@@ -1,153 +1,226 @@
 # FTags
 
-FTags lets GMs attach colored manual tags to world documents, folders, and compendiums in any game system. D&D5e additionally provides automatic search tags derived from document properties. Compact shaped markers are rendered next to entries in standard sidebar directories and open compendium windows without changing Foundry typography; tag names remain available in tooltips and Spotlight.
+<p align="center">
+  <img src="https://img.shields.io/badge/Foundry_VTT-v14_(14.367_verified)-2b6cb0" alt="Foundry VTT v14 (14.367 verified)">
+  <a href="https://github.com/TacticalOtaku/FTags/releases/tag/v1.5.0"><img src="https://img.shields.io/badge/Release-v1.5.0-2f855a" alt="Release v1.5.0"></a>
+  <img src="https://img.shields.io/badge/Systems-Any_%2B_D%26D5e_Auto_Tags-c05621" alt="Systems: Any + D&D5e Auto Tags">
+  <img src="https://img.shields.io/badge/Languages-EN_%7C_RU-4c51bf" alt="Languages: EN | RU">
+  <img src="https://img.shields.io/badge/Dependencies-None-718096" alt="Zero runtime dependencies">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-4a5568" alt="MIT License"></a>
+</p>
 
-Target: **Foundry VTT 14.367**. The manifest allows the full Version 14 generation and declares build 14.367 as verified.
+<p align="center">
+  <strong>GM-only colored shaped tags &amp; Spotlight search for Foundry VTT world documents, folders, and compendiums.</strong><br>
+  Works on any game system with zero runtime dependencies, plus automatic D&amp;D5e search facets.<br><br>
+  <a href="#installation">Installation</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#spotlight--query-syntax">Spotlight Search</a> ·
+  <a href="#api--data-model">API &amp; Data</a> ·
+  <a href="#development--verification">Development</a> ·
+  <a href="#русское-описание">По-русски</a>
+</p>
 
-Author: **TacticalOtaku**.
+---
+
+FTags lets GMs organize world documents, folders, and compendiums with colored, shaped manual markers directly inside standard Foundry VTT sidebar directories and compendium windows—without adding text labels or changing Foundry's row density and typography. Full tag names live in tooltips and an instant **Spotlight** search palette (`Ctrl+Shift+F`).
+
+> [!NOTE]
+> Designed for **Foundry VTT v14** (verified on **14.367**). Everything is strictly GM-only (`game.user.isGM`): no FTags buttons, dots, dialogs, or context menu items are rendered for players.
+
+Author: **TacticalOtaku**
+
+---
 
 ## Features
 
-- Actor, Item, Scene, JournalEntry, RollTable, Cards, Playlist, Macro, their world folders, and compendium documents/folders.
-- Shared world tag dictionary for all GMs; no FTags UI is rendered for players.
-- Assignment from the right-click context menu in world sidebars and compendium pack sheets.
-- Up to three small colored markers per row, followed by a composite overflow dot made from hidden tag colors; no tag text is inserted into directory rows.
-- Clicking an individual directory dot opens Spotlight with that tag included; FTags never hides core directory rows.
-- Spotlight results use larger colored tags with consistent light text, readable truncation tooltips, and intentional narrow-window wrapping.
-- Spotlight tag states: ignore, include, or exclude; included tags can match ANY or ALL.
-- Filters for object types, relevance/name/type sorting, reset, and per-GM persistence.
-- GM-only Spotlight search across tagged world and compendium objects by object name or tag name.
-- `#term` Spotlight tokens search tag names only; arrow keys, Enter, and Escape provide full keyboard navigation.
-- Editable Foundry keybinding with no forced default, plus a magnifying-glass shortcut in supported directory toolbars and compendium headers.
-- Folder tags do not inherit automatically; a GM can explicitly add the selected tags to all current documents in that folder and its subfolders (including compendium folders).
-- Protected writes: clear warnings and disabled save when trying to tag documents inside locked compendiums.
-- Tag manager with create, edit, color, delete, import, and export actions.
-- Manual marker shapes: circle, square, diamond, star and triangle, all within the original 6px directory marker size.
-- Ready-made Preparation, Story and Relationships tag sets. Reapplying a set preserves existing names, colors and shapes and does not create duplicates.
-- Automatic D&D5e tags for standard creature types, NPC CR (0–30 and 1/8, 1/4, 1/2), item types, rarity and melee/ranged weapon category. These are searchable even without manual assignments.
-- Versioned JSON dictionary import/export. Assignments are intentionally not exported.
-- English and Russian localization.
-- No runtime dependencies, external services, sockets, or secrets.
+- **Broad document coverage:** Supports `Actor`, `Item`, `Scene`, `JournalEntry`, `RollTable`, `Cards`, `Playlist`, `Macro`, world folders, and unlocked compendium documents and folders.
+- **Zero visual clutter:** Renders up to **3** crisp 6 px shaped markers (`● circle`, `■ square`, `◆ diamond`, `★ star`, `▲ triangle`) per directory row, plus a composite multi-color overflow segment when a document carries more than 3 tags.
+- **Instant filtering from any row:** Hover any marker cluster to read all assigned tag names; click an individual marker to jump straight into **Spotlight** pre-filtered to that tag. Never hides core directory rows.
+- **Spotlight palette (`Ctrl+Shift+F`):** Search world and compendium targets by object name or tag name (up to 100 results) with full keyboard navigation (`↑` `↓` `Enter` `Esc`) and high-contrast tag chips.
+- **Advanced per-GM filters:** Include or exclude tags with `ANY` / `ALL` matching, filter by document type, sort by relevance/name/type, and persist preferences separately per GM.
+- **Automatic D&D5e facets:** Derived read-only search tags for creature types, NPC CR (`0–30`, `1/8`, `1/4`, `1/2`), item types, rarities, and melee/ranged weapon category with bilingual English/Russian aliases. Hidden from directory dots, assignment dialogs, and result chips.
+- **Safe folder propagation & deletion:** Tags on folders do not auto-inherit into future items, keeping workflows explicit; GMs can one-click propagate selected tags recursively (including compendium folders), while locked compendiums prevent accidental writes. Deleting a tag cleans all world and unlocked compendium targets atomically—if any target fails to load or update, dictionary removal is aborted so nothing becomes orphaned.
+- **Starter presets & portable dictionaries:** Three duplicate-safe starter sets (**Preparation**, **Story**, **Relationships**) and versioned Schema v2 JSON export/import with preview summary counts (legacy Schema v1 dictionaries import with circle defaults).
+- **Bilingual UI & self-contained footprint:** Full English (`en`) and Russian (`ru`) localization with zero external dependencies, sockets, or third-party services.
+
+---
 
 ## Installation
 
-1. Copy the module directory to `{Foundry user data}/Data/modules/ftags`.
-2. Make sure `module.json` is directly inside that `ftags` directory.
-3. Restart Foundry VTT and enable **FTags** in the world module manager.
+### Manifest URL (Recommended)
 
-For a packaged release, extract `ftags-v1.5.0.zip` into `Data/modules`; the archive should contain the top-level `ftags` directory.
+In Foundry VTT setup, open **Add-on Modules → Install Module**, paste the Manifest URL below, and click **Install**:
+
+```text
+https://raw.githubusercontent.com/TacticalOtaku/FTags/main/module.json
+```
+
+### Manual Archive Install
+
+1. Download `ftags-v1.5.0.zip` from the [GitHub Releases](https://github.com/TacticalOtaku/FTags/releases/tag/v1.5.0) page.
+2. Extract it into `{Foundry user data}/Data/modules/ftags` so `module.json` sits directly inside the `ftags` folder.
+3. Restart Foundry VTT and enable **FTags** in your world's module management settings.
+
+---
 
 ## Usage
 
-1. Open **Game Settings → Configure Settings → Module Settings → FTags → Manage tags**.
-2. Create tags and choose their colors and shapes, or add a ready-made set.
-3. Right-click a supported document or folder and choose **Manage tags**.
-4. Click a rendered color dot to open Spotlight with that tag included in its filters; hover it to read the tag name.
-5. When assigning tags to a folder, optionally enable the one-time action that adds the selected tags to existing documents in the folder tree.
-6. Open **Game Settings → Configure Controls → FTags**, assign a key to **Open FTags Spotlight**, then use it anywhere in the world. The magnifying-glass button in a supported directory opens the same search.
+1. **Create tags or apply presets:** Open **Game Settings → Configure Settings → Module Settings → FTags → Manage tags** (or click the tag button in any supported directory toolbar). Define tags up to 48 characters (`500` max per world), choose a 6-digit hex color and marker shape (`●` `■` `◆` `★` `▲`), or expand **Ready-made tag sets**.
+2. **Assign tags:** Right-click any supported document or folder in a world sidebar or open compendium window and select **Manage tags**.
+3. **Propagate to folder contents (optional):** When tagging a folder, check **Also add selected tags to current folder contents** to add those tags once to existing supported documents across that folder tree (future documents created inside the folder remain untagged unless tagged manually).
+4. **Search with Spotlight:** Press `Ctrl+Shift+F` (configurable under **Game Settings → Configure Controls → FTags → Open FTags Spotlight**), click the magnifying-glass button in a directory toolbar, or click any colored dot on a directory entry.
 
-Spotlight lists supported world and compendium objects with at least one manual or supported automatic tag. Normal words may match either the object name or a tag name. Prefix a word with `#` to require a tag-name match, for example `wolf #prepared`. Multiple words use AND semantics. At most 100 matches are shown at once.
+> [!TIP]
+> Re-applying a preset never duplicates tags or overwrites colors/shapes you edited manually. If a compendium pack is locked, FTags disables saving in the assignment dialog and prevents writes with a clear warning.
 
-### Automatic D&D5e search
+---
 
-Automatic tags are computed from document properties and never written into flags or the manual dictionary. They do not appear in assignment dialogs, directory markers, or result chips. Expand **Automatic tags · D&D5e** inside Spotlight filters to include/exclude them, using the same ANY/ALL controls as manual tags. Updating a document refreshes its search properties. Other game systems keep manual search and tags.
+## Spotlight & Query Syntax
 
-Russian and English aliases work in either UI language:
+Spotlight indexes world documents/folders and selected compendium index fields across unlocked and locked packs (loading full documents only when opened, deleted-tag cleanup runs, or folder propagation targets unlocked packs).
 
-```text
-нежить CR 3
-undead cr:3
-оружие необычной редкости ближнее
-weapon uncommon melee
-CR >= 5
-CR 1/8
-#"very rare"
+### Query Operators
+
+| Query                                                         | Matches                                                                                            |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `goblin camp`                                                 | Objects whose name or manual/automatic tag matches both `goblin` **AND** `camp`                    |
+| `wolf #prepared`                                              | Object matches `wolf`, and carries a tag matching `prepared` (`#` searches tags only)              |
+| `#"very rare"`                                                | Multi-word tag phrase in quotes                                                                    |
+| `нежить CR 3` / `undead cr:3`                                 | Undead creatures with exact Challenge Rating `3` (EN and RU aliases work in any UI language)       |
+| `оружие необычной редкости ближнее` / `weapon uncommon melee` | Uncommon melee weapons                                                                             |
+| `CR >= 5` / `CR 1/8` / `ПО 1/2`                               | Exact numeric/fractional CR comparisons (`=`, `<`, `>`, `<=`, `>=`; predicates combine with `AND`) |
+
+### Automatic D&D5e Facets
+
+When running the `dnd5e` system, Spotlight computes automatic facets directly from document properties without writing to document flags:
+
+- **Creatures & NPCs:** Creature type and NPC CR (`0–30`, `1/8`, `1/4`, `1/2`).
+- **Items & Weapons:** Item category, rarity (`rare` matches `rare` strictly, distinct from `uncommon` and `very rare`), and melee/ranged weapon category following official dnd5e [NPC data](https://github.com/foundryvtt/dnd5e/blob/master/module/data/actor/npc.mjs), [weapon data](https://github.com/foundryvtt/dnd5e/blob/master/module/data/item/weapon.mjs), and [system config](https://github.com/foundryvtt/dnd5e/blob/master/module/config.mjs) (thrown melee weapons stay `melee`; siege weapons are `ranged`).
+
+Click the **Sliders** button in Spotlight to open advanced filters (manual tags + expandable **Automatic tags · D&D5e**, `ANY`/`ALL` mode, document type toggles, relevance/name/type sorting, and one-click **Reset**). Unrelated document updates such as HP changes never trigger index rebuilds.
+
+---
+
+## API & Data Model
+
+### Public Macro / Module API
+
+Once initialized, `game.modules.get("ftags").api` exposes a frozen helper object (all read/UI entry points enforce `game.user.isGM` and return `[]` / `null` for players):
+
+| Member                       | Behavior                                                           |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `openTagManager(parentApp?)` | Opens the GM Tag Manager window                                    |
+| `openSpotlight(options?)`    | Opens Spotlight (`options.includeTagId` pre-includes a tag filter) |
+| `listTags()`                 | Returns current manual tag definitions from the world dictionary   |
+| `getAssignments(document)`   | Returns sanitized manual tag IDs currently assigned to `document`  |
+
+### Storage & Import/Export
+
+| Data                                                       | Storage Location                 | Scope                     |
+| ---------------------------------------------------------- | -------------------------------- | ------------------------- |
+| Tag dictionary (Schema v2: `id`, `name`, `color`, `shape`) | `ftags.tagDictionary` setting    | World (shared by all GMs) |
+| Spotlight filter preferences                               | `ftags.spotlightFilters` setting | Per-user GM               |
+| Tag assignments on documents and folders                   | `flags.ftags.tagIds` flag        | Document / Folder         |
+| Browser console diagnostic toggle                          | `ftags.debug` setting            | Client                    |
+
+> [!CAUTION]
+> Foundry world settings are technically readable by player clients over the socket even though FTags renders no player UI. Do not put secret plot spoilers into tag names if players inspect raw world data.
+
+- **Export / Import:** Dictionary JSON exports include schema version, timestamp, and manual tags (never assignments or automatic `auto-dnd5e-` tags). Imports preview created/updated/unchanged counts before committing, merge by stable `id`, reject conflicting names or malformed payloads (`invalid-payload`, `unsupported-schema`, `tags-required`, `duplicate-id`, `import-name-conflict`), and prune stale deleted tags from Spotlight filters.
+
+### Deliberate Limits
+
+- No player-facing UI or shared player tags.
+- No `JournalEntryPage` support (operates at parent `JournalEntry` and compendium level).
+- No full-text search inside biographies or journal body content—Spotlight searches object names and tags only.
+- No continuous inheritance for future documents added to tagged folders.
+- No concurrent multi-GM dictionary merge: the world dictionary is stored in one world setting (last write wins).
+
+---
+
+## Development & Verification
+
+Requires **Node.js >= 24**:
+
+```bash
+npm ci           # Install dev-only tooling (ESLint, Prettier, Handlebars)
+npm run check    # ESLint + template/localization validator + node --test suite
+npm run deploy   # Copy module files into local FoundryVTT Data/modules/ftags
+npm run release  # Run npm run check, then build dist/ftags-v<version>.zip
 ```
 
-CR predicates compare numbers exactly and support `=`, `<`, `>`, `<=` and `>=`; multiple predicates combine with AND. Automatic category aliases match whole values so `rare` does not match `very rare` or `uncommon`. Use quotes for a manual tag containing spaces. This is a deterministic query syntax, not an AI natural-language parser.
+Optional Playwright browser harness (`tools/ui-harness.html`):
 
-The first search loads selected index fields from compendiums, including locked packs. FTags does not load every full document or change pack locks. A failed pack read shows a warning; close and reopen Spotlight to retry. Large libraries may take longer on the first search.
-
-The D&D5e adapter follows the official [NPC data](https://github.com/foundryvtt/dnd5e/blob/master/module/data/actor/npc.mjs), [weapon data](https://github.com/foundryvtt/dnd5e/blob/master/module/data/item/weapon.mjs) and [system configuration](https://github.com/foundryvtt/dnd5e/blob/master/module/config.mjs). Standard weapon categories distinguish melee/ranged; thrown melee weapons remain melee, siege weapons are ranged, and natural weapons without a defined category are not guessed.
-
-Use the sliders button in Spotlight to open advanced filters. Each tag can be ignored, included, or excluded. Included tags can require at least one match (ANY) or every selected tag (ALL). Object types and result sorting can be adjusted independently. These settings are stored for the current GM; **Reset** restores all object types, relevance sorting, and no tag restrictions.
-
-Deleting a tag requires confirmation and removes that tag id from all supported world documents and folders. If any object cannot be updated, dictionary deletion is aborted and the tag stays available for a safe retry.
-
-## Import and export
-
-The manager exports a JSON document containing:
-
-- `schemaVersion`
-- export metadata
-- tag ids, names, colors and shapes (schema 2)
-
-Assignments are not included. Import merges by stable tag id, updates matching ids, creates new ids, and rejects conflicting duplicate names or malformed data before changing the world dictionary.
-
-Schema 1 dictionaries remain importable; missing shapes default to circles. Automatic tags are not exported. IDs beginning with `auto-dnd5e-` are reserved for computed search tags.
-
-## Data and privacy
-
-- Tag definitions are stored in a hidden world setting.
-- Assignments are stored in `flags.ftags.tagIds` on world documents and Folder documents.
-- Spotlight filters use a Version 14 user-scoped setting, separately for each GM.
-- The UI and all write callbacks require `game.user.isGM`.
-- Foundry world data is not a secrets vault. Do not use tag names for information that must be cryptographically hidden from player clients or browser debugging.
-
-## Deliberate limits
-
-- No player UI.
-- No JournalEntryPage support (only parent JournalEntry documents and compendium documents).
-- No full-text search inside document content; Spotlight searches object and tag names only.
-- No automatic folder inheritance for future documents.
-- No export of assignments, arbitrary bulk editor, external database, or cloud sync.
-- No merge when two GMs edit the dictionary at the same moment: the dictionary is one world setting, so the last write wins.
-
-## Development and verification
-
-Use Node.js 24 or newer:
-
-```text
-npm ci
-npm run check    # ESLint, template/localization validation, node --test
-npm run deploy   # copy the module into %LOCALAPPDATA%/FoundryVTT/Data/modules/ftags (or FOUNDRY_DATA, --data <path>)
-npm run release  # check, then dist/ftags-v<version>.zip
+```bash
+node tools/check-ui.mjs
 ```
 
-Releases are tagged `v<version>` and attach `ftags-v<version>.zip`, like the other TacticalOtaku modules. Versions up to 1.3.0 were published without the `v` (`1.3.0` / `ftags-1.3.0.zip`); since 1.4.0 `npm run release` accepts only the `v` form.
+Set `FTAGS_PLAYWRIGHT_PATH` and `FTAGS_BROWSER_CHANNEL` if using an external Playwright/browser install. Screenshots are written to `artifacts/`. Further documentation: [`docs/architecture.md`](docs/architecture.md), [`GLOSSARY.md`](GLOSSARY.md), and [`CHANGELOG.md`](CHANGELOG.md).
 
-`npm ci` installs development-only Handlebars for template verification. Foundry provides Handlebars at runtime; the installed module has no additional runtime dependency. The optional browser harness runs with `node tools/check-ui.mjs`; set `FTAGS_PLAYWRIGHT_PATH` to an installed Playwright package path if needed and `FTAGS_BROWSER_CHANNEL=msedge` to use an installed Edge browser. Harness screenshots go into `artifacts/`. This exercises the module UI against a small Foundry API stand-in, not a live world.
+<details>
+<summary><strong>Manual Foundry VTT 14.367 Verification Matrix</strong></summary>
 
-The Node suite covers automatic search, numeric CR and fractions, bilingual category aliases, include/exclude combinations, legacy imports, shape persistence, preset idempotence, and read-only compendium indexing with failure recovery. Validation checks JavaScript syntax, manifest asset paths, translation references and English/Russian localization parity. Live Foundry verification is a separate manual step; this workspace does not include the older Foundry validation harness.
+Repeat the core workflow across `Actor`, `Item`, `Scene`, `JournalEntry`, `RollTable`, `Cards`, `Playlist`, and `Macro`:
 
-### Manual Foundry 14.367 matrix
-
-Repeat the core flow for Actor, Item, Scene, JournalEntry, RollTable, Cards, Playlist, and Macro directories:
-
-1. Create four tags as a GM.
-2. Assign four or more tags to a document; verify three individual color dots plus one composite overflow dot, with no text added to the row.
+1. Create four tags as a GM with distinct colors and shapes (`circle`, `square`, `diamond`, `star`, `triangle`).
+2. Assign 4+ tags to a document; verify 3 individual 6 px markers plus 1 composite multi-color overflow segment with zero extra text in the row.
 3. Reload the client; verify assignments and Spotlight filters persist.
-4. Click an individual directory dot; verify Spotlight opens with that tag included and no directory rows are hidden.
-5. Test the same directory in the attached sidebar and a detached popout.
-6. Assign a folder tag without propagation; verify children remain unchanged.
-7. Repeat with propagation enabled; verify current recursive documents receive it and newly created documents do not.
-8. Test compendium documents and compendium folders in unlocked packs; verify indicator dots, context menu assignment, and Spotlight indexing.
-9. Verify that attempting to assign tags to locked compendiums displays an informative warning and prevents saving.
-10. Log in as a player; verify no FTags toolbar, dots, manager, or context actions are visible.
-11. Export and re-import the dictionary; verify preview counts and unchanged assignments.
-12. Delete a tag; verify confirmation, global cleanup across world and unlocked compendiums, and stale Spotlight-filter removal.
-13. Assign a Spotlight key, search by object name, tag name, and `#tag`, then open results with mouse and keyboard.
-14. Verify include/exclude, ANY/ALL, object types, sorting and reset; Spotlight remains unavailable to a player.
-15. Verify Spotlight result tags remain readable with bright, dark, long, and four-tag examples at normal and narrow window widths.
+4. Click a directory dot; verify Spotlight opens with that tag included and never hides directory rows.
+5. Test directories both docked in the sidebar and popped out in detached windows.
+6. Tag a folder without propagation; verify children remain unchanged.
+7. Repeat with **Also add selected tags to current folder contents** enabled; verify existing recursive documents receive tags and newly created ones do not.
+8. Test unlocked compendium documents and folders (markers, context menu, and Spotlight indexing).
+9. Attempt to tag locked compendiums; verify an informative warning appears and saves are blocked.
+10. Log in as a player; verify no toolbar, markers, manager menu, Spotlight shortcut, or context menu items exist.
+11. Export and re-import the dictionary JSON; verify preview counts and intact document assignments.
+12. Delete a tag; verify confirmation dialog, cleanup across world and unlocked compendiums (or atomic abort warning on load/write failure), and stale Spotlight-filter pruning.
+13. Trigger Spotlight via `Ctrl+Shift+F`, search by name, tag, and `#tag`, and open results with mouse and keyboard (`↑` `↓` `Enter` `Esc`).
+14. Verify include/exclude, `ANY`/`ALL`, object-type filters, sorting, and **Reset**; confirm Spotlight stays blocked for players.
+15. Verify Spotlight result chips keep readable dark/light contrast across bright, dark, long, and multi-tag items at both regular and narrow widths.
+
+</details>
+
+---
 
 ## Русское описание
 
-Автоматические метки D&D5e вычисляются из свойств документов: тип существа, CR, тип предмета, редкость и категория оружия. Они скрыты у документов, в назначении и в результатах поиска; выбирать их можно в отдельном блоке расширенных фильтров Spotlight. Примеры: `нежить CR 3`, `оружие необычной редкости ближнее`, `CR >= 5`, `CR 1/8`. Работают русские и английские названия независимо от языка интерфейса. На других системах доступны ручные метки.
+**FTags** — GM-модуль для **Foundry VTT v14** (проверен на сборке **14.367**), который добавляет цветные метки разной формы к сущностям мира, папкам и компендиумам, а также быстрый поиск **Spotlight**. Вся функциональность доступна только гейм-мастеру (`game.user.isGM`): игроки не видят кнопок, точек, диалогов и пунктов контекстного меню.
 
-В менеджере можно выбрать форму ручной метки: круг, квадрат, ромб, звезда или треугольник. Размер значков в каталогах остаётся 6 пикселей. Раздел «Готовые наборы меток» добавляет наборы «Подготовка», «Сюжет» и «Отношения» без перезаписи существующих меток и повторных дублей. Импорт старого словаря поддерживается; экспорт сохраняет формы.
+### Установка
 
-FTags добавляет GM-метки к стандартным спискам Foundry VTT (включая компендиумы). Рядом с сущностями показываются только компактные цветные точки без текста, поэтому модуль не меняет шрифт и плотность строк Foundry/Plutonium; названия меток доступны в подсказке и Spotlight. Метки общие для всех GM мира, игрокам интерфейс модуля не показывается. Поддерживаются актёры, предметы, сцены, журналы, таблицы, карточные колоды, плейлисты, макросы, мировые папки и папки/документы компендиумов. Расширенные фильтры Spotlight поддерживают включение, исключение, режимы «любая/все», типы объектов и сортировку; настройки сохраняются отдельно для каждого GM.
+Вставьте URL манифеста в **Дополнительные модули → Установить модуль → Manifest URL**:
 
-Установка: распакуйте папку `ftags` в `Data/modules`, перезапустите Foundry и включите модуль в нужном мире. Управление словарём находится в настройках модулей, а назначение — в контекстном меню сущности или папки (как в боковых панелях, так и в окнах компендиумов).
+```text
+https://raw.githubusercontent.com/TacticalOtaku/FTags/main/module.json
+```
 
-Spotlight вызывается назначаемой клавишей в **Настройках управления → FTags**, кнопкой-лупой или кликом по отдельной цветной точке. Он показывает объекты мира и компендиумов с метками, ищет по названиям объектов и меток, а префикс `#` ограничивает слово названиями меток. В результатах Spotlight метки отображаются контрастными цветными чипами; длинные названия раскрываются подсказкой, а узкое окно допускает перенос на две строки. FTags больше не скрывает строки стандартных каталогов.
+Либо скачайте архив `ftags-v1.5.0.zip` со страницы [релизов GitHub](https://github.com/TacticalOtaku/FTags/releases/tag/v1.5.0), распакуйте папку `ftags` в `{Foundry user data}/Data/modules/ftags` (так, чтобы `module.json` лежал внутри `ftags`) и включите **FTags** в настройках мира.
+
+### Основные возможности и управление
+
+- **Поддерживаемые сущности:** `Actor`, `Item`, `Scene`, `JournalEntry`, `RollTable`, `Cards`, `Playlist`, `Macro`, мировые папки, а также документы и папки компендиумов.
+- **Минималистичные маркеры (6 px):** рядом с названием строки выводятся до **3** значков выбранной формы (`●` круг, `■` квадрат, `◆` ромб, `★` звезда, `▲` треугольник) и единая многоцветная полоса переполнения при большем числе меток. Модуль не меняет шрифт и плотность списков Foundry, а полный список меток отображается во всплывающей подсказке.
+- **Быстрый доступ:**
+  - **Менеджер словаря:** _Настройки игры → Настройки модулей → FTags → Управление метками → Открыть менеджер меток_ или кнопка с ярлыком в панели каталога. Поддерживаются готовые наборы (**«Подготовка»**, **«Сюжет»**, **«Отношения»**), которые добавляют недостающие метки без перезаписи уже отредактированных.
+  - **Назначение меток:** ПКМ по документу или папке (включая окна компендиумов) → **Управление метками**. Для папок доступно разовое добавление выбранных меток всем текущим документам внутри дерева (новые документы в будущем теги не наследуют). Заблокированные компендиумы защищены от случайной записи.
+  - **Удаление метки:** очищает её со всех мировых документов, папок и разблокированных компендиумов; при ошибке загрузки или записи документов удаление из словаря безопасно отменяется.
+  - **Spotlight (`Ctrl+Shift+F`):** открывается горячей клавишей (_Настройки управления → FTags → Открыть FTags Spotlight_), кнопкой-лупой в панели каталога или кликом по отдельной цветной точке у записи (сразу добавляя её в фильтр). Поддерживает навигацию клавиатурой (`↑` `↓` `Enter` `Esc`) и лимит до 100 результатов.
+
+### Поиск Spotlight и автоматические метки D&D5e
+
+В системе **D&D5e** автоматически вычисляются фасеты свойств документов: тип существа, CR (`0–30`, `1/8`, `1/4`, `1/2`), тип предмета, редкость и категория оружия (ближнее/дальнобойное). Они **не записываются** в флаги документов, не отображаются точками в каталогах и чипами в результатах — но доступны в отдельном раскрывающемся блоке фильтров и в поисковой строке на обоих языках:
+
+| Запрос                              | Что найдёт                                                                                         |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `нежить CR 3` / `undead cr:3`       | Нежить с точным CR `3` (русские и английские алиасы работают при любом языке интерфейса)           |
+| `волк #подготовить`                 | Объекты со словом «волк» в имени и меткой, совпадающей с «подготовить» (`#` ищет только по меткам) |
+| `#"очень редкий"`                   | Поиск по многословной метке в кавычках                                                             |
+| `оружие необычной редкости ближнее` | Оружие необычной редкости ближнего боя                                                             |
+| `CR >= 5` / `ПО 1/2`                | Точные сравнения по CR (`=`, `<`, `>`, `<=`, `>=`) с объединением через логическое `И`             |
+
+### Хранение, импорт/экспорт и ограничения
+
+- Словарь (схема v2: `id`, `name`, `color`, `shape`) хранится в мировой настройке `ftags.tagDictionary` и является общим для всех GM мира (при одновременной правке двумя GM действует принцип последней записи).
+- Назначения пишутся в `flags.ftags.tagIds`, а фильтры Spotlight — индивидуально для каждого GM в `ftags.spotlightFilters`.
+- Экспорт сохраняет определения меток в JSON без привязок к документам; импорт поддерживает схемы v1 и v2, показывает сводку изменений до подтверждения и отклоняет конфликтующие имена и некорректные файлы.
+- Данные настроек мира технически остаются доступными клиенту игрока по сети Foundry — не используйте названия меток для хранения конфиденциальных сюжетных спойлеров.
