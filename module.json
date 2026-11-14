@@ -2,7 +2,7 @@
   "id": "ftags",
   "title": "FTags",
   "description": "GM-only colored tags and Spotlight search for Foundry VTT world documents and folders.",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "authors": [
     {
       "name": "TacticalOtaku"
@@ -13,12 +13,8 @@
     "verified": "14.367",
     "maximum": "14"
   },
-  "esmodules": [
-    "scripts/main.js"
-  ],
-  "styles": [
-    "styles/ftags.css"
-  ],
+  "esmodules": ["scripts/main.js"],
+  "styles": ["styles/ftags.css"],
   "languages": [
     {
       "lang": "en",
@@ -33,5 +29,5 @@
   ],
   "url": "https://github.com/TacticalOtaku/FTags",
   "manifest": "https://raw.githubusercontent.com/TacticalOtaku/FTags/main/module.json",
-  "download": "https://github.com/TacticalOtaku/FTags/releases/download/v1.4.0/ftags-v1.4.0.zip"
+  "download": "https://github.com/TacticalOtaku/FTags/releases/download/v1.5.0/ftags-v1.5.0.zip"
 }

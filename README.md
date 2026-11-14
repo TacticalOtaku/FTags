@@ -35,7 +35,7 @@ Author: **TacticalOtaku**.
 2. Make sure `module.json` is directly inside that `ftags` directory.
 3. Restart Foundry VTT and enable **FTags** in the world module manager.
 
-For a packaged release, extract `ftags-v1.4.0.zip` into `Data/modules`; the archive should contain the top-level `ftags` directory.
+For a packaged release, extract `ftags-v1.5.0.zip` into `Data/modules`; the archive should contain the top-level `ftags` directory.
 
 ## Usage
 

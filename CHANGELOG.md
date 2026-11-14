@@ -1,20 +1,28 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
 ### Fixed
 
-- Deleting a tag reads the compendium indexes first, so it is cleared from unlocked compendium documents instead of surviving in their flags. Packs that could not be read are named in a warning.
-- Compendium windows show tag markers on their documents right away; the dots used to appear only after Spotlight had been opened once.
+- Deleting a tag prepares indexes only for unlocked compendium packs first and surfaces `getDocument` load errors through bounded-concurrency cleanup so failed compendium updates abort dictionary deletion instead of leaving orphaned tags behind; unreadable packs are named in a warning.
+- Compendium windows request `flags.ftags` through deduplicated index preparation right away, so markers appear immediately without waiting for Spotlight to open once.
+- Folder tag propagation prepares unindexed compendium folders first, skips already-tagged entries at index level, and bounds document loads and flag writes with `BULK_CONCURRENCY`.
+- Directory rows and context menus share one folder and document-type resolver, preferring the owning compendium collection before world folders and falling back to `metadata.type`.
+- Duplicate tag names consistently use `toLocaleLowerCase()` across creation, editing, presets, coercion, and import planning so distinct Cyrillic letters such as «й» and «и» stay distinct.
+- Closing Spotlight flushes pending filter edits and clears `filterSaveTimer` cleanly without echo re-renders; index invalidations preserve active filters, and import confirmation reuses the previewed plan without parsing JSON twice.
+- Mapped dictionary import/validation error codes (`invalid-id`, `invalid-payload`, `unsupported-schema`, `tags-required`, `duplicate-id`) to `FTAGS.Errors.InvalidImport`.
 
 ### Changed
 
-- A document update invalidates the search index only when a field the index reads changes, so hit point edits no longer rebuild it. Switching a Spotlight filter no longer rebuilds it either.
+- Automatic D&D5e facets, Spotlight search rules, and watched fields take explicit `systemId` and `${systemId}:${language}` cache keys with zero Foundry globals in `scripts/core/`.
+- Document updates and folder/document lifecycle events run through `RefreshCoordinator`, ignoring non-indexed fields such as hit points while keeping open folder assignment counts up to date.
+- Documented module domain terminology in `GLOSSARY.md` and updated `docs/architecture.md`.
 
 ### Development
 
-- Tests cover the release rules in `tools/release-manifest.mjs`, and `tools/validate.mjs` also checks the localisation keys assembled from template literals.
-- Removed unused helpers, hooks Foundry never fires (`createCompendium`, `deleteCompendium`), dead CSS and three unused localisation keys.
+- Consolidated core, Foundry port (`FoundryWorldPort` + `TagWorkspace`), refresh scheduling, and directory/menu integration while removing `runtime.js` and superseded shallow wrappers.
+- Added an in-memory `FoundryWorldPort` adapter (`tests/memory-adapter.js`) and expanded the plain-Node test suite; `tools/validate.mjs` checks dynamically assembled localization keys alongside `tools/release-manifest.mjs`.
+- Removed unused helpers, hooks Foundry never fires (`createCompendium`, `deleteCompendium`), dead CSS, and three unused localisation keys.
 
 ## 1.4.0
 
