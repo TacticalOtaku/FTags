@@ -12,20 +12,36 @@ summary {padding:6px 0;} small {font-weight:normal;} .hint {color:#bdc5d3;}
 const flatten = (tree, prefix = '', into = {}) => { for (const [key, value] of Object.entries(tree)) { const path = prefix ? `${prefix}.${key}` : key; if (value && typeof value === 'object') flatten(value, path, into); else into[path] = value; } return into; };
 const translations = flatten(await (await fetch('/lang/ru.json')).json());
 const settings = new Map();
+const settingConfigs = new Map();
 const getProperty = (object, path) => path.split('.').reduce((o,k) => o?.[k],object);
 const actor = {id:'skeleton',uuid:'Actor.skeleton',name:'Скелет',documentName:'Actor',type:'npc',system:{details:{cr:3,type:{value:'undead'}}}};
-window.game = {user:{isGM:true},system:{id:'dnd5e'},i18n:{lang:'ru',localize:k=>translations[k]??k,format:(k,args)=>Object.entries(args).reduce((s,[key,value])=>s.replaceAll(`{${key}}`,value),translations[k]??k)},actors:[actor],packs:[],folders:[],settings:{get:(_s,k)=>settings.get(k),set:async(_s,k,v)=>{settings.set(k,v);}}};
+window.game = {
+  user:{isGM:true},
+  system:{id:'dnd5e'},
+  i18n:{lang:'ru',localize:k=>translations[k]??k,format:(k,args)=>Object.entries(args).reduce((s,[key,value])=>s.replaceAll(`{${key}}`,value),translations[k]??k)},
+  actors:[actor],
+  packs:[],
+  folders:[],
+  settings:{
+    register:(_s,k,cfg)=>{settingConfigs.set(k,cfg);if(!settings.has(k)&&'default'in cfg)settings.set(k,structuredClone(cfg.default));},
+    registerMenu:()=>{},
+    get:(_s,k)=>settings.get(k),
+    set:async(_s,k,v)=>{settings.set(k,v);settingConfigs.get(k)?.onChange?.(v);}
+  }
+};
 window.CONFIG = {Actor:{sidebarIcon:'actor'},Item:{sidebarIcon:'item'}};
 window.ui = {notifications:{info:()=>{},warn:console.warn,error:message=>{throw new Error(message);}}};
 class ApplicationV2 {
-  static instances(){return [];}
+  static _instances = new Set();
+  static instances(){return [...ApplicationV2._instances].filter((app)=>app instanceof this);}
   constructor(){this.rendered=false;this.parts={};}
   _canRender(){return true;}
   async _prepareContext(){return {};}
   async _onRender(){}
   async _preClose(){}
   setPosition(){}
-  async close(){await this._preClose({});this.element?.remove();this.rendered=false;}
+  bringToFront(){}
+  async close(){await this._preClose({});this.element?.remove();this.rendered=false;ApplicationV2._instances.delete(this);}
   async render(){
     if (!this._canRender({})) return;
     const context=await this._prepareContext({});
@@ -40,6 +56,7 @@ class ApplicationV2 {
     }
     document.querySelector('#mount').append(this.element);
     this.rendered=true;
+    ApplicationV2._instances.add(this);
     this.element.onclick=async event=>{
       const target=event.target.closest('[data-action]');
       if(target)await this.constructor.DEFAULT_OPTIONS.actions?.[target.dataset.action]?.call(this,event,target);
@@ -51,11 +68,50 @@ window.foundry={applications:{api:{ApplicationV2,HandlebarsApplicationMixin:Base
 Handlebars.registerHelper('localize',(key,options)=>game.i18n.format(key,options.hash));
 Handlebars.registerHelper('disabled',value=>value?'disabled':'');
 Handlebars.registerHelper('checked',value=>value?'checked':'');
-const {tagService}=await import('/scripts/runtime.js');
-const {TagManagerApp}=await import('/scripts/ui/tag-manager.js');
-const {SpotlightApp}=await import('/scripts/ui/spotlight.js');
-const {TagAssignmentApp}=await import('/scripts/ui/tag-assignment.js');
-window.harness={tagService,manager:new TagManagerApp(),spotlight:new SpotlightApp(),assignment:new TagAssignmentApp(actor),actor};
+const {createFoundryAdapter}=await import('/scripts/foundry/foundry-adapter.js');
+const {TagWorkspace}=await import('/scripts/foundry/workspace.js');
+const {RefreshCoordinator}=await import('/scripts/core/refresh.js');
+const {createDirectoryIntegration}=await import('/scripts/ui/directory-integration.js');
+const {TagManagerApp, openTagManager}=await import('/scripts/ui/tag-manager.js');
+const {SpotlightApp, createSpotlightController}=await import('/scripts/ui/spotlight.js');
+const {TagAssignmentApp, openTagAssignment}=await import('/scripts/ui/tag-assignment.js');
+
+const adapter = createFoundryAdapter();
+const workspace = new TagWorkspace(adapter);
+const coordinator = new RefreshCoordinator({
+  isGM: () => workspace.isGM(),
+  watchedFields: workspace.getWatchedFields(),
+  onFlush: (batch) => {
+    if (batch.dictionaryApps) for (const app of TagManagerApp.instances()) if (app.rendered) void app.render();
+    if (batch.assignmentApps) for (const app of TagAssignmentApp.instances()) if (app.rendered) void app.render();
+    if (batch.spotlightIndex || batch.spotlightFilters) {
+      for (const app of SpotlightApp.instances()) {
+        if (!app.rendered) continue;
+        app.markDirty({index: batch.spotlightIndex, filters: batch.spotlightFilters});
+        void app.render();
+      }
+    }
+  }
+});
+workspace.registerSettings({onSettingChange: (reason, value) => coordinator.onSettingChange(reason, value)});
+const spotlightController = createSpotlightController({workspace, coordinator});
+const openManager = (parentApp = null) => openTagManager(parentApp, {workspace});
+const directoryIntegration = createDirectoryIntegration({
+  workspace,
+  openSpotlight: spotlightController.openSpotlight,
+  openTagAssignment: (target, parentApp = null) => openTagAssignment(target, {parentApp, workspace, openManager}),
+  openTagManager: openManager
+});
+window.harness={
+  adapter,
+  workspace,
+  coordinator,
+  enhanceDirectory: directoryIntegration.enhanceDirectory,
+  manager:new TagManagerApp({workspace}),
+  spotlight:new SpotlightApp({workspace, coordinator}),
+  assignment:new TagAssignmentApp(actor, {workspace, openManager}),
+  actor
+};
 await harness.manager.render();
 window.ready=true;
 </script></html>

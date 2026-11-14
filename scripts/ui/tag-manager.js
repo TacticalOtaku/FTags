@@ -1,64 +1,59 @@
-import {MAX_TAG_NAME_LENGTH, MODULE_ID, TAG_SHAPES} from "../constants.js";
-import {getPresetTags, PRESET_IDS} from "../core/presets.js";
-import {tagService} from "../runtime.js";
-import {log} from "../core/logger.js";
-import {notifyError, notifyInfo, notifyWarn} from "./notifications.js";
+import { MAX_TAG_NAME_LENGTH, MODULE_ID, TAG_SHAPES } from "../constants.js";
+import { log } from "../core/logger.js";
+import { notifyError, notifyInfo, notifyWarn } from "./notifications.js";
 
-const {ApplicationV2, DialogV2, HandlebarsApplicationMixin} = foundry.applications.api;
+const { ApplicationV2, DialogV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "ftags-manager",
     classes: ["ftags-app", "ftags-manager-app"],
-    position: {width: 560, height: "auto"},
-    window: {icon: "fa-solid fa-tags", resizable: true},
+    position: { width: 560, height: "auto" },
+    window: { icon: "fa-solid fa-tags", resizable: true },
     actions: {
       create: this.#createTag,
       edit: this.#editTag,
       delete: this.#deleteTag,
       export: this.#exportTags,
       import: this.#importTags,
-      preset: this.#applyPreset
-    }
+      preset: this.#applyPreset,
+    },
   };
 
   static PARTS = {
-    content: {template: `modules/${MODULE_ID}/templates/tag-manager.hbs`}
+    content: { template: `modules/${MODULE_ID}/templates/tag-manager.hbs` },
   };
 
-  constructor({returnApp = null, ...options} = {}) {
+  constructor({ workspace = null, ...options } = {}) {
     super(options);
-    this.returnApp = returnApp;
+    if (!workspace) throw new Error("TagManagerApp requires a workspace");
+    this.workspace = workspace;
   }
 
   get title() {
-    return game.i18n.localize("FTAGS.Manager.Title");
+    return this.workspace.localize("FTAGS.Manager.Title");
   }
 
   _canRender(options) {
-    return Boolean(game.user?.isGM) && super._canRender(options);
+    return this.workspace.isGM() && super._canRender(options);
   }
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    const tags = tagService.listTags();
+    const tags = this.workspace.listTags();
     return {
       ...context,
       tags,
-      shapes: shapeOptions(),
-      presets: PRESET_IDS.map(id => ({
-        id, label: game.i18n.localize(`FTAGS.Presets.${id}`),
-        description: getPresetTags(id).map(tag => tag.name).join(" · ")
+      shapes: shapeOptions(this.workspace),
+      presets: this.workspace.listPresets().map((preset) => ({
+        id: preset.id,
+        label: this.workspace.localize(preset.labelKey),
+        description: preset.tags.map((tag) => tag.name).join(" · "),
       })),
       hasTags: Boolean(tags.length),
       hasNoTags: !tags.length,
-      maxTagNameLength: MAX_TAG_NAME_LENGTH
+      maxTagNameLength: MAX_TAG_NAME_LENGTH,
     };
-  }
-
-  async refreshRelatedApps() {
-    await this.render();
-    if (this.returnApp?.rendered) await this.returnApp.render();
   }
 
   /** @this {TagManagerApp} */
@@ -67,9 +62,9 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const colorInput = this.element.querySelector('input[name="newColor"]');
     try {
       const shape = this.element.querySelector('select[name="newShape"]')?.value;
-      await tagService.createTag({name: nameInput?.value, color: colorInput?.value, shape});
+      await this.workspace.createTag({ name: nameInput?.value, color: colorInput?.value, shape });
       notifyInfo("FTAGS.Manager.CreateSuccess");
-      await this.refreshRelatedApps();
+      await this.render();
     } catch (error) {
       notifyError(error);
       nameInput?.focus();
@@ -80,40 +75,42 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #applyPreset(_event, target) {
     target.disabled = true;
     try {
-      const result = await tagService.applyPreset(target.dataset.presetId);
+      const result = await this.workspace.applyPreset(target.dataset.presetId);
       notifyInfo("FTAGS.Presets.Added", result);
-      await this.refreshRelatedApps();
+      await this.render();
     } catch (error) {
       notifyError(error);
-    } finally { target.disabled = false; }
+    } finally {
+      target.disabled = false;
+    }
   }
 
   /** @this {TagManagerApp} */
   static async #editTag(_event, target) {
-    const tag = tagService.getTag(target.dataset.tagId);
+    const tag = this.workspace.getTag(target.dataset.tagId);
     if (!tag) return;
 
     let result;
     try {
       result = await DialogV2.wait({
-        window: {title: game.i18n.format("FTAGS.Manager.Edit", {name: tag.name})},
-        content: editDialogContent(tag),
+        window: { title: this.workspace.format("FTAGS.Manager.Edit", { name: tag.name }) },
+        content: editDialogContent(tag, this.workspace),
         rejectClose: false,
         modal: true,
         buttons: [
-          {action: "cancel", label: game.i18n.localize("FTAGS.Common.Cancel")},
+          { action: "cancel", label: this.workspace.localize("FTAGS.Common.Cancel") },
           {
             action: "save",
-            label: game.i18n.localize("FTAGS.Common.Save"),
+            label: this.workspace.localize("FTAGS.Common.Save"),
             icon: "fa-solid fa-check",
             default: true,
             callback: (_event, button) => ({
               name: button.form.elements.name.value,
               color: button.form.elements.color.value,
-              shape: button.form.elements.shape.value
-            })
-          }
-        ]
+              shape: button.form.elements.shape.value,
+            }),
+          },
+        ],
       });
     } catch (error) {
       notifyError(error);
@@ -122,9 +119,9 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!result || result === "cancel") return;
 
     try {
-      await tagService.updateTag(tag.id, result);
+      await this.workspace.updateTag(tag.id, result);
       notifyInfo("FTAGS.Manager.UpdateSuccess");
-      await this.refreshRelatedApps();
+      await this.render();
     } catch (error) {
       notifyError(error);
     }
@@ -132,28 +129,31 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @this {TagManagerApp} */
   static async #deleteTag(_event, target) {
-    const tag = tagService.getTag(target.dataset.tagId);
+    const tag = this.workspace.getTag(target.dataset.tagId);
     if (!tag) return;
-    const message = game.i18n.format("FTAGS.Manager.DeleteContent", {name: tag.name});
+    const message = this.workspace.format("FTAGS.Manager.DeleteContent", { name: tag.name });
     const confirmed = await DialogV2.confirm({
-      window: {title: game.i18n.localize("FTAGS.Manager.DeleteTitle")},
+      window: { title: this.workspace.localize("FTAGS.Manager.DeleteTitle") },
       content: `<p>${foundry.utils.escapeHTML(message)}</p>`,
       rejectClose: false,
-      modal: true
+      modal: true,
     });
     if (!confirmed) return;
 
     try {
-      const result = await tagService.deleteTag(tag.id);
+      const result = await this.workspace.deleteTag(tag.id);
       if (result.failed) {
         log.error("Tag cleanup failures", result.errors);
-        notifyWarn("FTAGS.Manager.DeleteAborted", {count: result.failed});
+        notifyWarn("FTAGS.Manager.DeleteAborted", { count: result.failed });
       } else if (result.indexFailures.length) {
-        notifyWarn("FTAGS.Manager.DeleteIndexFailed", {count: result.cleaned, packs: result.indexFailures.join(", ")});
+        notifyWarn("FTAGS.Manager.DeleteIndexFailed", {
+          count: result.cleaned,
+          packs: result.indexFailures.join(", "),
+        });
       } else {
-        notifyInfo("FTAGS.Manager.DeleteSuccess", {count: result.cleaned});
+        notifyInfo("FTAGS.Manager.DeleteSuccess", { count: result.cleaned });
       }
-      await this.refreshRelatedApps();
+      await this.render();
     } catch (error) {
       notifyError(error);
     }
@@ -162,8 +162,8 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @this {TagManagerApp} */
   static async #exportTags() {
     try {
-      const json = tagService.exportDictionary();
-      downloadJson(json, `ftags-${game.world?.id ?? "world"}-tags.json`);
+      const json = this.workspace.exportDictionary();
+      downloadJson(json, `ftags-${this.workspace.getWorldId()}-tags.json`);
       notifyInfo("FTAGS.Manager.ExportSuccess");
     } catch (error) {
       notifyError(error);
@@ -180,18 +180,18 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       if (!file) return;
       try {
         const text = await file.text();
-        const preview = tagService.previewImport(text);
-        const summary = game.i18n.format("FTAGS.Manager.ImportSummary", preview.summary);
+        const plan = this.workspace.previewImport(text);
+        const summary = this.workspace.format("FTAGS.Manager.ImportSummary", plan.summary);
         const confirmed = await DialogV2.confirm({
-          window: {title: game.i18n.localize("FTAGS.Manager.ImportTitle")},
+          window: { title: this.workspace.localize("FTAGS.Manager.ImportTitle") },
           content: `<p>${foundry.utils.escapeHTML(summary)}</p>`,
           rejectClose: false,
-          modal: true
+          modal: true,
         });
         if (!confirmed) return;
-        await tagService.importDictionary(text);
+        await this.workspace.commitImport(plan);
         notifyInfo("FTAGS.Manager.ImportSuccess");
-        await this.refreshRelatedApps();
+        await this.render();
       } catch (error) {
         notifyError(error, "FTAGS.Errors.InvalidImport");
       }
@@ -200,14 +200,14 @@ export class TagManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 }
 
-export function openTagManager(parentApp = null) {
-  if (!game.user?.isGM) return null;
-  const app = new TagManagerApp({returnApp: parentApp});
-  if (parentApp?.renderChild) return parentApp.renderChild(app, {force: true});
-  return app.render({force: true});
+export function openTagManager(parentApp = null, { workspace } = {}) {
+  if (!workspace?.isGM?.()) return null;
+  const app = new TagManagerApp({ workspace });
+  if (parentApp?.renderChild) return parentApp.renderChild(app, { force: true });
+  return app.render({ force: true });
 }
 
-function editDialogContent(tag) {
+function editDialogContent(tag, workspace) {
   // DialogV2 rejects a content element that carries any attribute and only keeps its
   // innerHTML, so the outer div stays bare and the styling hook lives one level down.
   const root = document.createElement("div");
@@ -216,7 +216,7 @@ function editDialogContent(tag) {
 
   const nameLabel = document.createElement("label");
   const nameText = document.createElement("span");
-  nameText.textContent = game.i18n.localize("FTAGS.Manager.NewName");
+  nameText.textContent = workspace.localize("FTAGS.Manager.NewName");
   const nameInput = document.createElement("input");
   nameInput.name = "name";
   nameInput.type = "text";
@@ -227,7 +227,7 @@ function editDialogContent(tag) {
 
   const colorLabel = document.createElement("label");
   const colorText = document.createElement("span");
-  colorText.textContent = game.i18n.localize("FTAGS.Manager.Color");
+  colorText.textContent = workspace.localize("FTAGS.Manager.Color");
   const colorInput = document.createElement("input");
   colorInput.name = "color";
   colorInput.type = "color";
@@ -236,10 +236,10 @@ function editDialogContent(tag) {
 
   const shapeLabel = document.createElement("label");
   const shapeText = document.createElement("span");
-  shapeText.textContent = game.i18n.localize("FTAGS.Manager.Shape");
+  shapeText.textContent = workspace.localize("FTAGS.Manager.Shape");
   const shapeSelect = document.createElement("select");
   shapeSelect.name = "shape";
-  for (const {value, label} of shapeOptions()) {
+  for (const { value, label } of shapeOptions(workspace)) {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label;
@@ -252,13 +252,16 @@ function editDialogContent(tag) {
   return root;
 }
 
-function shapeOptions() {
-  const symbols = {circle: "●", square: "■", diamond: "◆", star: "★", triangle: "▲"};
-  return TAG_SHAPES.map(value => ({value, label: `${symbols[value]} ${game.i18n.localize(`FTAGS.Shapes.${value}`)}`}));
+function shapeOptions(workspace) {
+  const symbols = { circle: "●", square: "■", diamond: "◆", star: "★", triangle: "▲" };
+  return TAG_SHAPES.map((value) => ({
+    value,
+    label: `${symbols[value]} ${workspace.localize(`FTAGS.Shapes.${value}`)}`,
+  }));
 }
 
 function downloadJson(json, filename) {
-  const blob = new Blob([json], {type: "application/json;charset=utf-8"});
+  const blob = new Blob([json], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

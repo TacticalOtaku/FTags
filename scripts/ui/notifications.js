@@ -1,5 +1,5 @@
-import {MAX_TAG_NAME_LENGTH} from "../constants.js";
-import {log} from "../core/logger.js";
+import { MAX_TAG_NAME_LENGTH } from "../constants.js";
+import { log } from "../core/logger.js";
 
 const ERROR_KEYS = Object.freeze({
   "gm-only": "FTAGS.Errors.GMOnly",
@@ -10,7 +10,12 @@ const ERROR_KEYS = Object.freeze({
   "import-name-conflict": "FTAGS.Errors.DuplicateName",
   "invalid-color": "FTAGS.Errors.InvalidColor",
   "invalid-shape": "FTAGS.Errors.InvalidShape",
-  "locked-compendium": "FTAGS.Errors.LockedCompendium"
+  "locked-compendium": "FTAGS.Errors.LockedCompendium",
+  "invalid-id": "FTAGS.Errors.InvalidImport",
+  "invalid-payload": "FTAGS.Errors.InvalidImport",
+  "unsupported-schema": "FTAGS.Errors.InvalidImport",
+  "tags-required": "FTAGS.Errors.InvalidImport",
+  "duplicate-id": "FTAGS.Errors.InvalidImport",
 });
 
 export function notifyError(error, fallbackKey = "FTAGS.Errors.Generic") {
@@ -19,7 +24,7 @@ export function notifyError(error, fallbackKey = "FTAGS.Errors.Generic") {
   const details = {
     ...(error?.details ?? {}),
     max: error?.details?.max ?? MAX_TAG_NAME_LENGTH,
-    reason: error?.message ?? String(error)
+    reason: error?.message ?? String(error),
   };
   ui.notifications.error(game.i18n.format(key, details));
 }

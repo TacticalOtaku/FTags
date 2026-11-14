@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {resolve} from "node:path";
 import Handlebars from "handlebars";
 import {TAG_SHAPES} from "../scripts/constants.js";
-import {PRESET_IDS} from "../scripts/core/presets.js";
+import {PRESET_IDS} from "../scripts/core/dictionary.js";
 
 async function files(directory) {
   const entries = await readdir(directory, {withFileTypes: true});

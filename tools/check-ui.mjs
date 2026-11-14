@@ -29,8 +29,8 @@ try {
   await page.locator('[name="newName"]').fill("Проверка звезды");
   await page.locator('[name="newShape"]').selectOption("star");
   await page.locator('[data-action="create"]').click();
-  await page.waitForFunction(()=>harness.tagService.listTags().length===1);
-  assert.equal(await page.evaluate(()=>harness.tagService.listTags()[0].shape),"star");
+  await page.waitForFunction(()=>harness.workspace.listTags().length===1);
+  assert.equal(await page.evaluate(()=>harness.workspace.listTags()[0].shape),"star");
   await page.evaluate(()=>{
     foundry.applications.api.DialogV2.wait = async options => {
       if (options.content.querySelector('select[name="shape"] option[selected]')?.value !== 'star') throw new Error('Edit dialog lost the current shape');
@@ -38,11 +38,11 @@ try {
     };
   });
   await page.locator('[data-action="edit"]').click();
-  await page.waitForFunction(()=>harness.tagService.listTags()[0].shape==='diamond');
-  assert.equal(await page.evaluate(()=>JSON.parse(harness.tagService.exportDictionary()).tags[0].shape),'diamond');
+  await page.waitForFunction(()=>harness.workspace.listTags()[0].shape==='diamond');
+  assert.equal(await page.evaluate(()=>JSON.parse(harness.workspace.exportDictionary()).tags[0].shape),'diamond');
   await page.locator('.ftags-manager__presets summary').click();
   await page.locator('[data-preset-id="preparation"]').click();
-  await page.waitForFunction(()=>harness.tagService.listTags().length===4);
+  await page.waitForFunction(()=>harness.workspace.listTags().length===4);
   await page.evaluate(async()=>{
     await harness.manager.render();
     await harness.assignment.render();
@@ -55,12 +55,11 @@ try {
   assert.equal(await page.locator('.ftags-assignment [name="tagIds"]').count(),4);
   assert.ok(await page.locator('[data-tag-id="auto-dnd5e-cr-3"]').count());
   const markers = await page.evaluate(async()=>{
-    const {enhanceDirectory} = await import('/scripts/ui/directory-enhancer.js');
-    harness.actor.flags={ftags:{tagIds:harness.tagService.listTags().map(tag=>tag.id)}};
+    harness.actor.flags={ftags:{tagIds:harness.workspace.listTags().map(tag=>tag.id)}};
     const root=document.createElement('section');
     root.innerHTML='<ol class="directory-list"><li class="directory-item document" data-entry-id="skeleton"><span class="entry-name">Скелет</span></li></ol>';
     document.querySelector('#mount').append(root);
-    await enhanceDirectory({documentName:'Actor',collection:new Map([['skeleton',harness.actor]])},root);
+    await harness.enhanceDirectory({documentName:'Actor',collection:new Map([['skeleton',harness.actor]])},root);
     const markers=[...root.querySelectorAll('.ftags-tag-strip')].map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}));
     root.remove();return markers;
   });
