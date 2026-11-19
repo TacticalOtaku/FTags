@@ -39,7 +39,6 @@
 - `repository.js` and `service.js` moved from `scripts/core/` to `scripts/foundry/`, so `core/` holds only Foundry-free logic. See `docs/architecture.md`.
 - One logger (`scripts/core/logger.js`) replaces direct console calls.
 - ESLint and Prettier; `npm run check`, `deploy`, `package` and `release` as in the other TacticalOtaku modules; the archive goes to `dist/`. Releases use `v`-prefixed tags from this version on (`v1.4.0`, `ftags-v1.4.0.zip`).
-- Project rules in `CLAUDE.md`.
 
 ## 1.3.0
 

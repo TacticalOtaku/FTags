@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/Systems-Any_%2B_D%26D5e_Auto_Tags-c05621" alt="Systems: Any + D&D5e Auto Tags">
   <img src="https://img.shields.io/badge/Languages-EN_%7C_RU-4c51bf" alt="Languages: EN | RU">
   <img src="https://img.shields.io/badge/Dependencies-None-718096" alt="Zero runtime dependencies">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-4a5568" alt="MIT License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-4a5568" alt="GPL-3.0 License"></a>
 </p>
 
 <p align="center">
@@ -52,7 +52,7 @@ Author: **TacticalOtaku**
 In Foundry VTT setup, open **Add-on Modules → Install Module**, paste the Manifest URL below, and click **Install**:
 
 ```text
-https://raw.githubusercontent.com/TacticalOtaku/FTags/main/module.json
+https://github.com/TacticalOtaku/FTags/releases/latest/download/module.json
 ```
 
 ### Manual Archive Install
@@ -157,6 +157,8 @@ node tools/check-ui.mjs
 
 Set `FTAGS_PLAYWRIGHT_PATH` and `FTAGS_BROWSER_CHANNEL` if using an external Playwright/browser install. Screenshots are written to `artifacts/`. Further documentation: [`docs/architecture.md`](docs/architecture.md), [`GLOSSARY.md`](GLOSSARY.md), and [`CHANGELOG.md`](CHANGELOG.md).
 
+Pull Requests are disabled on this repository; bug reports and suggestions are welcome via [GitHub Issues](https://github.com/TacticalOtaku/FTags/issues) (see [CONTRIBUTING.md](CONTRIBUTING.md)). Licensed under the **GNU General Public License v3.0** ([LICENSE](LICENSE)).
+
 <details>
 <summary><strong>Manual Foundry VTT 14.367 Verification Matrix</strong></summary>
 
@@ -191,7 +193,7 @@ Repeat the core workflow across `Actor`, `Item`, `Scene`, `JournalEntry`, `RollT
 Вставьте URL манифеста в **Дополнительные модули → Установить модуль → Manifest URL**:
 
 ```text
-https://raw.githubusercontent.com/TacticalOtaku/FTags/main/module.json
+https://github.com/TacticalOtaku/FTags/releases/latest/download/module.json
 ```
 
 Либо скачайте архив `ftags-v1.5.0.zip` со страницы [релизов GitHub](https://github.com/TacticalOtaku/FTags/releases/tag/v1.5.0), распакуйте папку `ftags` в `{Foundry user data}/Data/modules/ftags` (так, чтобы `module.json` лежал внутри `ftags`) и включите **FTags** в настройках мира.
@@ -224,3 +226,7 @@ https://raw.githubusercontent.com/TacticalOtaku/FTags/main/module.json
 - Назначения пишутся в `flags.ftags.tagIds`, а фильтры Spotlight — индивидуально для каждого GM в `ftags.spotlightFilters`.
 - Экспорт сохраняет определения меток в JSON без привязок к документам; импорт поддерживает схемы v1 и v2, показывает сводку изменений до подтверждения и отклоняет конфликтующие имена и некорректные файлы.
 - Данные настроек мира технически остаются доступными клиенту игрока по сети Foundry — не используйте названия меток для хранения конфиденциальных сюжетных спойлеров.
+
+### Обратная связь и лицензия
+
+Pull Requests в этом репозитории отключены; сообщения об ошибках и предложения принимаются через [GitHub Issues](https://github.com/TacticalOtaku/FTags/issues) (см. [CONTRIBUTING.md](CONTRIBUTING.md)). Проект распространяется по лицензии **GNU General Public License v3.0** ([LICENSE](LICENSE)).
